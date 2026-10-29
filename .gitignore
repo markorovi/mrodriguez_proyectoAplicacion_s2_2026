@@ -1,0 +1,26 @@
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyc
+.pytest_cache/
+
+# Model weights and caches
+models/weights/
+*.pth
+*.pt
+*.safetensors
+.cache/
+
+# Internal progress tracking
+PROGRESS_LOG.txt
+
+# IDE and OS artifacts
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,7 @@
+# CUDA build of PyTorch for NVIDIA GPUs (driver with CUDA 13.0 or newer).
+# Install after requirements.txt:
+#   pip install -r requirements-cuda.txt
+# The "+cu130" local version forces pip to replace the CPU-only build.
+--index-url https://download.pytorch.org/whl/cu130
+torch==2.14.1+cu130
+torchvision==0.29.1+cu130
