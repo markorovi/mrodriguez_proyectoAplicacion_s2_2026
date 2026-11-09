@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from models.alignment import AlignmentReport
     from models.image_data import ImageData
     from models.validation_report import ValidationReport
 
@@ -53,3 +54,18 @@ class DepthEstimationError(SceneDiffError):
 
 class ModelLoadError(DepthEstimationError):
     """The pretrained model or its weights could not be loaded."""
+
+
+class AlignmentError(SceneDiffError):
+    """The "after" view could not be registered onto the "before" view.
+
+    ``report`` holds the matching statistics that led to the rejection.
+    """
+
+    def __init__(self, report: AlignmentReport) -> None:
+        self.report = report
+        super().__init__(report.message)
+
+
+class SegmentationError(SceneDiffError):
+    """Semantic segmentation could not be completed or its model loaded."""

@@ -5,8 +5,8 @@ Opt-in, like every test that loads pretrained models:
     RUN_INTEGRATION=1 pytest tests/test_hardware_integration.py -v -s
 
 Optional inputs:
-- ``data/samples/real_before.<ext>`` and ``data/samples/real_after.<ext>``:
-  a pair of real photos of the same indoor space.
+- ``data/samples/real_before<suffix>.<ext>`` and ``real_after<suffix>.<ext>``:
+  pairs of real photos of the same indoor space (see :mod:`tests.real_pairs`).
 - ``CAMERA_INDEX``: webcam to use. If unset, indices 0-3 are probed and the
   first one that delivers a frame is used.
 
@@ -30,6 +30,7 @@ from config.paths import SAMPLES_DIR
 from models import CameraError, ImageData
 from services.capture import ImageAcquisitionService
 from services.inference import DepthAnythingV2Estimator, DepthLatencyBenchmark
+from tests.real_pairs import real_pair_params
 from utils.depth_visualization import colorize_depth
 
 PIPELINE_BUDGET_SECONDS = 15.0
@@ -52,13 +53,6 @@ def _find_sample(stem: str) -> Optional[Path]:
             if candidate.is_file():
                 return candidate
     return None
-
-
-def _real_pair() -> tuple[Path, Path]:
-    before, after = _find_sample("real_before"), _find_sample("real_after")
-    if before is None or after is None:
-        pytest.skip("add data/samples/real_before.<ext> and real_after.<ext> to test real photos")
-    return before, after
 
 
 @pytest.fixture(scope="module")
@@ -121,9 +115,9 @@ def test_gpu_half_precision_agrees_with_cpu(gpu_estimator, acquisition):
 
 
 @requires_cuda
-def test_real_photo_pair_produces_metric_depth(gpu_estimator, acquisition):
-    before_path, after_path = _real_pair()
-    for path in (before_path, after_path):
+@pytest.mark.parametrize("pair", real_pair_params())
+def test_real_photo_pair_produces_metric_depth(gpu_estimator, acquisition, pair):
+    for path in (pair.before, pair.after):
         acquired = acquisition.from_file(path)
         depth = gpu_estimator.estimate(acquired.image)
         assert depth.is_metric

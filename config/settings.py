@@ -7,10 +7,13 @@ from typing import Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from config.alignment_settings import AlignmentSettings
 from config.camera_intrinsics import CameraIntrinsics
 from config.capture_settings import CaptureSettings
+from config.comparison_settings import ComparisonSettings
 from config.depth_settings import DepthSettings
 from config.image_settings import ImageSettings
+from config.segmentation_settings import SegmentationSettings
 
 
 class AppSettings(BaseModel):
@@ -23,6 +26,9 @@ class AppSettings(BaseModel):
     capture: CaptureSettings = Field(default_factory=CaptureSettings)
     depth: DepthSettings = Field(default_factory=DepthSettings)
     camera: CameraIntrinsics = Field(default_factory=CameraIntrinsics)
+    alignment: AlignmentSettings = Field(default_factory=AlignmentSettings)
+    segmentation: SegmentationSettings = Field(default_factory=SegmentationSettings)
+    comparison: ComparisonSettings = Field(default_factory=ComparisonSettings)
 
     @classmethod
     def from_json_file(cls, path: Union[str, Path]) -> AppSettings:
