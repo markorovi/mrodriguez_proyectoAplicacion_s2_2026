@@ -8,6 +8,7 @@ from typing import Optional, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 from config.alignment_settings import AlignmentSettings
+from config.camera_estimation_settings import CameraEstimationSettings
 from config.camera_intrinsics import CameraIntrinsics
 from config.capture_settings import CaptureSettings
 from config.comparison_settings import ComparisonSettings
@@ -17,7 +18,13 @@ from config.segmentation_settings import SegmentationSettings
 
 
 class AppSettings(BaseModel):
-    """Aggregates every configuration section of the application."""
+    """Aggregates every configuration section of the application.
+
+    ``camera`` is an optional calibrated profile (``python -m
+    scripts.calibrate_camera`` writes it). It applies to photos with the same
+    aspect ratio as the calibration; other photos are measured with the
+    focal length in their EXIF data or an estimate (``camera_estimation``).
+    """
 
     model_config = ConfigDict(frozen=True)
 
@@ -25,7 +32,8 @@ class AppSettings(BaseModel):
     image: ImageSettings = Field(default_factory=ImageSettings)
     capture: CaptureSettings = Field(default_factory=CaptureSettings)
     depth: DepthSettings = Field(default_factory=DepthSettings)
-    camera: CameraIntrinsics = Field(default_factory=CameraIntrinsics)
+    camera: Optional[CameraIntrinsics] = None
+    camera_estimation: CameraEstimationSettings = Field(default_factory=CameraEstimationSettings)
     alignment: AlignmentSettings = Field(default_factory=AlignmentSettings)
     segmentation: SegmentationSettings = Field(default_factory=SegmentationSettings)
     comparison: ComparisonSettings = Field(default_factory=ComparisonSettings)

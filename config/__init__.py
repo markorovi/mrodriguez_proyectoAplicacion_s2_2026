@@ -1,6 +1,7 @@
 """Application configuration models and defaults."""
 
 from config.alignment_settings import AlignmentSettings, DescriptorMatcher, FeatureDetector
+from config.camera_estimation_settings import CameraEstimationSettings
 from config.camera_intrinsics import CameraIntrinsics
 from config.capture_settings import CaptureSettings
 from config.comparison_settings import ComparisonSettings
@@ -12,6 +13,7 @@ from config.settings import AppSettings, load_settings
 __all__ = [
     "AlignmentSettings",
     "AppSettings",
+    "CameraEstimationSettings",
     "CameraIntrinsics",
     "CaptureSettings",
     "ComparisonSettings",

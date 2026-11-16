@@ -5,6 +5,7 @@ Pretrained weights are cached under ``models/weights/`` (not versioned).
 
 from models.acquired_image import AcquiredImage
 from models.alignment import AlignmentReport, AlignmentResult
+from models.camera_model import IntrinsicsSource
 from models.comparison_report import (
     BoundingBox,
     ChangedObject,
@@ -16,12 +17,14 @@ from models.comparison_report import (
 from models.depth_map import DepthMap
 from models.exceptions import (
     AlignmentError,
+    CalibrationError,
     CameraError,
     DepthEstimationError,
     ImageError,
     ImageLoadError,
     InvalidImageError,
     ModelLoadError,
+    NonIndoorSceneError,
     SceneDiffError,
     SegmentationError,
     UnsupportedImageFormatError,
@@ -36,6 +39,7 @@ __all__ = [
     "AlignmentReport",
     "AlignmentResult",
     "BoundingBox",
+    "CalibrationError",
     "CameraError",
     "ChangeType",
     "ChangedObject",
@@ -46,9 +50,11 @@ __all__ = [
     "ImageData",
     "ImageError",
     "ImageLoadError",
+    "IntrinsicsSource",
     "InvalidImageError",
     "IssueCode",
     "ModelLoadError",
+    "NonIndoorSceneError",
     "Point3D",
     "SceneDiffError",
     "SegmentationError",

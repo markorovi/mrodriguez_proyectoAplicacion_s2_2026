@@ -131,9 +131,12 @@ class SceneDepthEstimator(BaseDepthEstimator):
 
 
 # Class ids follow the ADE20K numbering used by the SegFormer checkpoints.
-WALL_ID, FLOOR_ID, BOX_ID = 0, 3, 41
+WALL_ID, SKY_ID, FLOOR_ID, BOX_ID = 0, 2, 3, 41
 FAKE_ID2LABEL = {i: f"class {i}" for i in range(BOX_ID + 1)}
-FAKE_ID2LABEL.update({WALL_ID: "wall", FLOOR_ID: "floor", BOX_ID: "box"})
+FAKE_ID2LABEL.update({WALL_ID: "wall", SKY_ID: "sky", FLOOR_ID: "floor", BOX_ID: "box"})
+
+# Pure sky blue: far bluer than anything in the synthetic rooms (blue - red <= 61).
+SKY_RGB = (60, 150, 240)
 
 
 class FakeSegformerProcessor:
@@ -161,6 +164,16 @@ class FakeSegformerModel(torch.nn.Module):
         logits[:, WALL_ID] = 70.0
         logits[:, BOX_ID] = redness
         return SimpleNamespace(logits=logits)
+
+
+class OutdoorSegformerModel(FakeSegformerModel):
+    """Like :class:`FakeSegformerModel`, but sees "sky" on strongly blue pixels (see ``SKY_RGB``)."""
+
+    def forward(self, pixel_values: torch.Tensor) -> SimpleNamespace:
+        output = super().forward(pixel_values)
+        small = F.avg_pool2d(pixel_values, 4)
+        output.logits[:, SKY_ID] = small[:, 2] - small[:, 0]
+        return output
 
 
 class FailingSegformerModel(FakeSegformerModel):

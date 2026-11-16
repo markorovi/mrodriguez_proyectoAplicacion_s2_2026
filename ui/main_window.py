@@ -1,0 +1,413 @@
+"""Main application window: choose two photos, analyze them and read the result."""
+
+from __future__ import annotations
+
+from enum import Enum
+from pathlib import Path
+from typing import Optional, Sequence, Union
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
+from PySide6.QtWidgets import (
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QStackedWidget,
+    QToolBar,
+    QVBoxLayout,
+    QWidget,
+)
+
+from config.paths import SAMPLES_DIR
+from config.settings import AppSettings
+from controllers.pipeline_controller import STAGES, PipelineController
+from models.comparison_report import ComparisonReport
+from ui import report_text, theme
+from ui.banner import Banner, BannerKind
+from ui.image_selection_panel import ImageSelectionPanel
+from ui.image_slot_widget import ImageSlotWidget
+from ui.pipeline_worker import PipelineWorker
+from ui.report_widget import ReportWidget
+
+APP_TITLE = "Detección de cambios en escena"
+
+ABOUT_TEXT = (
+    "<h3>Detección de cambios en escena</h3>"
+    "<p>Compara dos fotografías del mismo espacio interior, tomadas en momentos distintos, "
+    "e indica qué objetos se retiraron, cuáles se movieron (y cuántos centímetros) "
+    "y cuáles aparecieron.</p>"
+    "<p>Para mejores resultados, tome ambas fotos desde la misma posición y con una "
+    "iluminación parecida.</p>"
+    "<p>Las fotos se procesan en este equipo y no se envían a internet.</p>"
+)
+
+
+class Step(Enum):
+    """The three steps of an analysis, one page each."""
+
+    SELECTION = 0
+    ANALYZING = 1
+    REPORT = 2
+
+
+class MainWindow(QMainWindow):
+    """Guides the user through selection, analysis and result in three interactions.
+
+    The analysis runs on a :class:`PipelineWorker` thread; the window only
+    talks to the :class:`PipelineController` (through the worker and its
+    acquisition service) and to the domain models it returns.
+    """
+
+    def __init__(
+        self,
+        settings: Optional[AppSettings] = None,
+        controller: Optional[PipelineController] = None,
+        parent: Optional[QWidget] = None,
+    ) -> None:
+        super().__init__(parent)
+        self._controller = controller or PipelineController(settings)
+        self._settings = self._controller.settings
+        self._worker: Optional[PipelineWorker] = None
+        self._step = Step.SELECTION
+
+        self.setWindowTitle(APP_TITLE)
+        self._fit_to_screen()
+        self._build_actions()
+        self._build_pages()
+        self._set_step(Step.SELECTION)
+        self.statusBar().showMessage("Elija la foto de referencia (Antes) y la foto actual (Después).")
+
+    # ----------------------------------------------------------------- state
+
+    @property
+    def step(self) -> Step:
+        return self._step
+
+    @property
+    def controller(self) -> PipelineController:
+        return self._controller
+
+    @property
+    def selection_panel(self) -> ImageSelectionPanel:
+        return self._panel
+
+    @property
+    def report_widget(self) -> ReportWidget:
+        return self._report
+
+    @property
+    def can_analyze(self) -> bool:
+        return self._analyze.isEnabled()
+
+    @property
+    def is_analyzing(self) -> bool:
+        return self._step is Step.ANALYZING
+
+    @property
+    def error_text(self) -> str:
+        return self._error.text() if not self._error.isHidden() else ""
+
+    @property
+    def selection_warning_text(self) -> str:
+        return self._selection_warning.text() if not self._selection_warning.isHidden() else ""
+
+    @property
+    def progress_text(self) -> str:
+        return self._stage.text()
+
+    @property
+    def progress_value(self) -> int:
+        return self._progress.value()
+
+    # --------------------------------------------------------------- actions
+
+    def start_analysis(self) -> None:
+        """Step 2: analyze the selected pair on a background thread."""
+        pair = self._panel.selected_pair()
+        if pair is None or self.is_analyzing:
+            return
+        if self._worker is not None:
+            self._worker.wait()  # The previous run is only finishing its thread.
+
+        self._error.hide()
+        self._progress.setValue(0)
+        self._stage.setText(report_text.stage_description(STAGES[0]))
+        worker = PipelineWorker(self._controller, *pair, parent=self)
+        worker.progress_updated.connect(self._on_progress)
+        worker.report_ready.connect(self._on_report)
+        worker.scene_rejected.connect(self._panel.mark_not_indoor)
+        worker.error_occurred.connect(self._on_error)
+        worker.finished.connect(lambda: self._on_worker_finished(worker))
+        self._worker = worker
+        self._set_step(Step.ANALYZING)
+        self.statusBar().showMessage("Analizando las fotos...")
+        worker.start()
+
+    def new_analysis(self) -> None:
+        """Discard the photos and the result and go back to step 1."""
+        if self.is_analyzing:
+            return
+        self._panel.clear()
+        self._report.clear()
+        self._error.hide()
+        self._set_step(Step.SELECTION)
+        self.statusBar().showMessage("Elija la foto de referencia (Antes) y la foto actual (Después).")
+
+    def load_files(self, paths: Sequence[Union[str, Path]]) -> None:
+        """Load one photo into the next empty panel, or two photos as "before" and "after"."""
+        if self.is_analyzing or not paths:
+            return
+        self._back_to_selection()
+        if len(paths) >= 2:
+            self._panel.before_slot.load_file(paths[0])
+            self._panel.after_slot.load_file(paths[1])
+        else:
+            self._next_slot().load_file(paths[0])
+
+    def capture_photo(self) -> None:
+        """Capture with the selected camera into the next empty panel."""
+        if self.is_analyzing:
+            return
+        self._back_to_selection()
+        self._next_slot().capture()
+
+    def export_report(self) -> None:
+        if self._step is Step.REPORT:
+            self._report.export_with_dialog()
+
+    def save_image(self) -> None:
+        if self._step is Step.REPORT:
+            self._report.save_image_with_dialog()
+
+    @property
+    def can_save_image(self) -> bool:
+        return self._save_image_action.isEnabled()
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        if self._worker is not None and self._worker.isRunning():
+            self.statusBar().showMessage("Terminando el análisis en curso antes de cerrar...")
+            self._worker.wait()
+        self._controller.close()
+        super().closeEvent(event)
+
+    # ------------------------------------------------------- worker signals
+
+    def _on_progress(self, stage: str) -> None:
+        if stage in STAGES:
+            self._progress.setValue(STAGES.index(stage))
+        self._stage.setText(report_text.stage_description(stage))
+
+    def _on_report(self, report: ComparisonReport) -> None:
+        self._progress.setValue(len(STAGES))
+        self._report.show_report(report)
+        self._set_step(Step.REPORT)
+        self.statusBar().showMessage(report_text.headline(report))
+
+    def _on_error(self, message: str) -> None:
+        self._error.show_message(f"No se pudo completar el análisis. {message}", BannerKind.ERROR)
+        self._error.show()
+        self._set_step(Step.SELECTION)
+        self.statusBar().showMessage("El análisis no se completó.")
+
+    def _on_worker_finished(self, worker: PipelineWorker) -> None:
+        # A late signal from a previous run must not drop the current worker.
+        if self._worker is worker:
+            self._worker = None
+        worker.deleteLater()
+
+    # --------------------------------------------------------------- helpers
+
+    def _set_step(self, step: Step) -> None:
+        self._step = step
+        self._pages.setCurrentIndex(step.value)
+        busy = step is Step.ANALYZING
+        for action in (self._new_action, self._load_action, self._capture_action):
+            action.setEnabled(not busy)
+        self._export_action.setEnabled(step is Step.REPORT)
+        self._save_image_action.setEnabled(step is Step.REPORT)
+        self._refresh_selection()
+
+    def _refresh_selection(self) -> None:
+        self._analyze.setEnabled(self._panel.is_ready and not self.is_analyzing)
+        warnings = [
+            f"{slot.title()}: {warning}"
+            for slot in (self._panel.before_slot, self._panel.after_slot)
+            if slot.acquired is not None
+            for warning in slot.acquired.warnings
+        ]
+        self._selection_warning.setText("\n".join(warnings))
+        self._selection_warning.setVisible(bool(warnings))
+
+    def _on_selection_changed(self) -> None:
+        self._error.hide()
+        self._refresh_selection()
+
+    def _back_to_selection(self) -> None:
+        if self._step is Step.REPORT:
+            self.new_analysis()
+
+    def _next_slot(self) -> ImageSlotWidget:
+        before = self._panel.before_slot
+        return before if before.acquired is None else self._panel.after_slot
+
+    def _choose_files(self) -> None:
+        extensions = " ".join(f"*{ext}" for ext in self._settings.image.allowed_extensions)
+        paths, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Cargar fotos (elija una, o dos: primero la de Antes y luego la de Después)",
+            str(SAMPLES_DIR),
+            f"Imágenes ({extensions})",
+        )
+        self.load_files(paths)
+
+    def _fit_to_screen(self) -> None:
+        """1280 x 820 when it fits; otherwise 90 % of the available screen."""
+        width, height = 1280, 820
+        screen = self.screen()
+        if screen is not None:
+            available = screen.availableGeometry()
+            width = min(width, int(available.width() * 0.9))
+            height = min(height, int(available.height() * 0.9))
+        self.resize(width, height)
+
+    def _about(self) -> None:
+        QMessageBox.about(self, f"Acerca de {APP_TITLE}", ABOUT_TEXT)
+
+    # ---------------------------------------------------------------- layout
+
+    def _build_actions(self) -> None:
+        self._new_action = QAction("Nuevo análisis", self)
+        self._new_action.setShortcut(QKeySequence.StandardKey.New)
+        self._new_action.setStatusTip("Descartar las fotos y el resultado y empezar de nuevo.")
+        self._new_action.triggered.connect(self.new_analysis)
+
+        self._load_action = QAction("Cargar fotos...", self)
+        self._load_action.setShortcut(QKeySequence.StandardKey.Open)
+        self._load_action.setStatusTip("Abrir una o dos fotos guardadas en el equipo.")
+        self._load_action.triggered.connect(self._choose_files)
+
+        self._capture_action = QAction("Capturar de cámara", self)
+        self._capture_action.setStatusTip("Tomar una foto con la cámara elegida.")
+        self._capture_action.triggered.connect(self.capture_photo)
+
+        self._save_image_action = QAction("Guardar imagen...", self)
+        self._save_image_action.setShortcut(QKeySequence.StandardKey.Save)
+        self._save_image_action.setStatusTip("Guardar solo la imagen con los cambios marcados, en PNG.")
+        self._save_image_action.triggered.connect(self.save_image)
+
+        self._export_action = QAction("Exportar...", self)
+        self._export_action.setShortcut(QKeySequence("Ctrl+E"))
+        self._export_action.setStatusTip("Guardar la imagen del resultado y un resumen.")
+        self._export_action.triggered.connect(self.export_report)
+
+        about_action = QAction("Acerca de", self)
+        about_action.triggered.connect(self._about)
+        quit_action = QAction("Salir", self)
+        quit_action.setShortcut(QKeySequence.StandardKey.Quit)
+        quit_action.triggered.connect(self.close)
+
+        file_menu = self.menuBar().addMenu("&Archivo")
+        for action in (
+            self._new_action,
+            self._load_action,
+            self._capture_action,
+            self._save_image_action,
+            self._export_action,
+        ):
+            file_menu.addAction(action)
+        file_menu.addSeparator()
+        file_menu.addAction(quit_action)
+        self.menuBar().addMenu("A&yuda").addAction(about_action)
+
+        toolbar = QToolBar("Acciones principales")
+        toolbar.setMovable(False)
+        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        for action in (self._new_action, self._load_action, self._capture_action, self._export_action):
+            toolbar.addAction(action)
+        toolbar.addSeparator()
+        toolbar.addAction(about_action)
+        self.addToolBar(toolbar)
+
+    def _build_pages(self) -> None:
+        self._pages = QStackedWidget()
+        self._pages.addWidget(self._selection_page())
+        self._pages.addWidget(self._analysis_page())
+        self._pages.addWidget(self._report_page())
+        self.setCentralWidget(self._pages)
+
+    def _selection_page(self) -> QWidget:
+        self._panel = ImageSelectionPanel(self._controller.acquisition, self._settings.capture.camera_index)
+        self._panel.changed.connect(self._on_selection_changed)
+        self._error = Banner(kind=BannerKind.ERROR)
+        self._error.hide()
+        self._selection_warning = Banner(kind=BannerKind.WARNING)
+        self._selection_warning.hide()
+
+        self._analyze = QPushButton("Analizar diferencias")
+        self._analyze.setMinimumHeight(40)
+        self._analyze.setStyleSheet("font-weight:bold; padding:0 24px;")
+        self._analyze.setToolTip("Disponible cuando las dos fotos son válidas.")
+        self._analyze.clicked.connect(self.start_analysis)
+        actions = QHBoxLayout()
+        actions.addStretch()
+        actions.addWidget(self._analyze)
+
+        page, layout = _page("Paso 1 de 3 · Elija las dos fotos")
+        layout.addWidget(self._error)
+        layout.addWidget(self._panel)
+        layout.addWidget(self._selection_warning)
+        layout.addStretch()
+        layout.addLayout(actions)
+        return page
+
+    def _analysis_page(self) -> QWidget:
+        self._progress = QProgressBar()
+        self._progress.setRange(0, len(STAGES))
+        self._progress.setTextVisible(False)
+        self._progress.setMinimumWidth(420)
+        self._stage = QLabel()
+        self._stage.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        font = self._stage.font()
+        font.setPointSizeF(font.pointSizeF() * 1.2)
+        self._stage.setFont(font)
+        hint = QLabel("La primera vez puede tardar unos segundos más mientras el sistema se prepara.")
+        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hint.setStyleSheet(f"color:{theme.TEXT_MUTED};")
+
+        page, layout = _page("Paso 2 de 3 · Analizando las diferencias")
+        layout.addStretch()
+        layout.addWidget(self._stage)
+        layout.addWidget(self._progress, alignment=Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(hint)
+        layout.addStretch()
+        return page
+
+    def _report_page(self) -> QWidget:
+        self._report = ReportWidget()
+        self._report.exported.connect(self.statusBar().showMessage)
+        again = QPushButton("Nuevo análisis")
+        again.clicked.connect(self.new_analysis)
+        actions = QHBoxLayout()
+        actions.addWidget(again)
+        actions.addStretch()
+
+        page, layout = _page("Paso 3 de 3 · Resultado")
+        layout.addWidget(self._report, stretch=1)
+        layout.addLayout(actions)
+        return page
+
+
+def _page(title: str) -> tuple[QWidget, QVBoxLayout]:
+    page = QWidget()
+    layout = QVBoxLayout(page)
+    heading = QLabel(title)
+    font = heading.font()
+    font.setPointSizeF(font.pointSizeF() * 1.4)
+    font.setBold(True)
+    heading.setFont(font)
+    layout.addWidget(heading)
+    return page, layout

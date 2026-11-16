@@ -4,19 +4,12 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtWidgets import (
-    QDialog,
-    QDialogButtonBox,
-    QHBoxLayout,
-    QLabel,
-    QSpinBox,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QDialog, QDialogButtonBox, QVBoxLayout, QWidget
 
 from config.settings import AppSettings
 from models.acquired_image import AcquiredImage
 from services.capture.acquisition_service import ImageAcquisitionService
+from ui.image_selection_panel import ImageSelectionPanel
 from ui.image_slot_widget import ImageSlotWidget
 from utils.image_validator import ImageValidator
 
@@ -46,56 +39,30 @@ class ImageSelectionDialog(QDialog):
 
     @property
     def before_slot(self) -> ImageSlotWidget:
-        return self._before
+        return self._panel.before_slot
 
     @property
     def after_slot(self) -> ImageSlotWidget:
-        return self._after
+        return self._panel.after_slot
 
     @property
     def camera_index(self) -> int:
-        return self._camera.value()
+        return self._panel.camera_index
 
     @camera_index.setter
     def camera_index(self, index: int) -> None:
-        self._camera.setValue(index)
+        self._panel.camera_index = index
 
     @property
     def can_continue(self) -> bool:
         return self._buttons.button(QDialogButtonBox.StandardButton.Ok).isEnabled()
 
     def selected_pair(self) -> Optional[tuple[AcquiredImage, AcquiredImage]]:
-        before, after = self._before.acquired, self._after.acquired
-        if before is None or after is None:
-            return None
-        return before, after
+        return self._panel.selected_pair()
 
     def _build(self) -> None:
-        instructions = QLabel(
-            "Seleccione la imagen de referencia (Antes) y la imagen actual (Después). "
-            "Tome ambas desde la misma posición y con iluminación similar. "
-            f"Resolución mínima: {self._settings.image.min_width}x{self._settings.image.min_height}."
-        )
-        instructions.setWordWrap(True)
-
-        self._camera = QSpinBox()
-        self._camera.setRange(0, 9)
-        self._camera.setValue(self._settings.capture.camera_index)
-        self._camera.setToolTip("Número de la cámara conectada que se usará al pulsar \"Capturar\".")
-
-        camera_row = QHBoxLayout()
-        camera_row.addWidget(QLabel("Cámara:"))
-        camera_row.addWidget(self._camera)
-        camera_row.addStretch()
-
-        self._before = ImageSlotWidget("Antes", self._service, self._camera.value)
-        self._after = ImageSlotWidget("Después", self._service, self._camera.value)
-        self._before.changed.connect(self._refresh)
-        self._after.changed.connect(self._refresh)
-
-        slots = QHBoxLayout()
-        slots.addWidget(self._before)
-        slots.addWidget(self._after)
+        self._panel = ImageSelectionPanel(self._service, self._settings.capture.camera_index)
+        self._panel.changed.connect(self._refresh)
 
         self._buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -106,11 +73,8 @@ class ImageSelectionDialog(QDialog):
         self._buttons.rejected.connect(self.reject)
 
         layout = QVBoxLayout(self)
-        layout.addWidget(instructions)
-        layout.addLayout(camera_row)
-        layout.addLayout(slots)
+        layout.addWidget(self._panel)
         layout.addWidget(self._buttons)
 
     def _refresh(self) -> None:
-        ready = self._before.status.is_usable and self._after.status.is_usable
-        self._buttons.button(QDialogButtonBox.StandardButton.Ok).setEnabled(ready)
+        self._buttons.button(QDialogButtonBox.StandardButton.Ok).setEnabled(self._panel.is_ready)

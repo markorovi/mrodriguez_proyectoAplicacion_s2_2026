@@ -21,8 +21,9 @@ El sistema ejecuta un pipeline de seis etapas:
    en español los objetos que cambiaron.
 5. **Comparación y metrología 3D**: diferencia de profundidad con normalización de escala,
    umbral de 5 cm y verificación por apariencia; retroproyección pinhole con los intrínsecos
-   `fx, fy, cx, cy`; clasificación en *retirado*, *desplazamiento* (con la distancia 3D en
-   centímetros) o *aparición*.
+   `fx, fy, cx, cy` de la cámara que tomó la foto (calibración, EXIF o estimación; ver
+   [Parámetros de la cámara](#parámetros-de-la-cámara)); clasificación en *retirado*,
+   *desplazamiento* (con la distancia 3D en centímetros) o *aparición*.
 6. **Reporte**: lista estructurada de objetos y la imagen con los cambios resaltados.
 
 Todo el procesamiento es local; ninguna imagen se envía a servicios externos.
@@ -34,7 +35,7 @@ servicios, de modo que cada modelo puede sustituirse sin modificar los demás m�
 
 | Paquete | Responsabilidad |
 |---|---|
-| `config/` | Configuración tipada e inmutable (Pydantic): criterios de imagen, cámara, modelo e intrínsecos `fx, fy, cx, cy`. |
+| `config/` | Configuración tipada e inmutable (Pydantic): criterios de imagen, cámara, modelo, perfil calibrado opcional `fx, fy, cx, cy` y estimación de la cámara. |
 | `models/` | Estructuras de datos del dominio (`ImageData`, `DepthMap`, `ValidationReport`, `AcquiredImage`, `AlignmentResult`, `SegmentationMask`, `ChangedObject`, `ComparisonReport`) y jerarquía de excepciones. Caché local de pesos en `models/weights/`. |
 | `services/capture/` | Fuentes de imagen (`ImageSource`, implementada por `FileImageLoader` y `CameraCapture`) y `ImageAcquisitionService`, que entrega imágenes ya validadas. |
 | `services/inference/` | `BaseDepthEstimator` (contrato común), `DepthAnythingV2Estimator`, `DeviceManager` (GPU/CPU), cargador de modelos de Hugging Face y `DepthLatencyBenchmark`. |
@@ -42,9 +43,9 @@ servicios, de modo que cada modelo puede sustituirse sin modificar los demás m�
 | `services/segmentation/` | `SegFormerSegmenter` (GPU/CPU) y `RegionLabeler`, que nombra en español la región de un cambio. |
 | `services/comparison/` | `SpatialComparisonService`: diferencia de profundidad, regiones de cambio, retroproyección 3D y clasificación. |
 | `controllers/` | `PipelineController`: orquestación de extremo a extremo (fachada única para la interfaz). |
-| `utils/` | `ImageValidator`, estadísticas fotométricas, geometría pinhole, coloreado de mapas de profundidad, dibujo de los cambios y generador de escenas sintéticas. |
-| `ui/` | Interfaz gráfica de escritorio (PySide6): diálogo de selección de imágenes. |
-| `scripts/` | Utilidades de línea de comandos (medición de latencia). |
+| `utils/` | `ImageValidator`, estadísticas fotométricas, geometría pinhole, parámetros de cámara por foto (`camera_model`), calibración con tablero (`camera_calibration`), coloreado de mapas de profundidad, dibujo de los cambios y generador de escenas sintéticas. |
+| `ui/` | Interfaz gráfica de escritorio (PySide6): ventana principal (`MainWindow`), hilo de análisis (`PipelineWorker`), pantalla de resultado (`ReportWidget`) con exportación, y paneles y diálogo de selección de imágenes. Solo usa el `PipelineController` y los modelos de dominio. |
+| `scripts/` | Utilidades de línea de comandos: medición de latencia de la profundidad y del análisis completo (CPU y GPU), y calibración de la cámara. |
 | `tests/` | Pruebas unitarias y de integración con `pytest`. |
 | `data/samples/` | Escenas interiores sintéticas para demostración y pruebas sin conexión. |
 
@@ -62,10 +63,13 @@ Patrones aplicados:
   cada módulo sin hardware ni descargas.
 - **Fachada**: `PipelineController` expone `analyze_files(antes, después)` y
   `analyze(antes, después)`, y oculta el orden de las etapas y la vida de los modelos.
+- **Observador**: ambos métodos aceptan un `progress` opcional que recibe la clave de cada etapa
+  de `STAGES` al comenzar; `PipelineWorker` lo reemite como señal de Qt para la barra de progreso.
 
 ## Estado actual
 
-**Avance 2 completado: alineación espacial, metrología 3D, segmentación y orquestación.**
+**Avance 2 completado: alineación espacial, metrología 3D, segmentación y orquestación.
+Interfaz de usuario final (ACT-09) y verificación de escena interior (RF-012) completadas.**
 
 | Componente | Estado |
 |---|---|
@@ -78,12 +82,17 @@ Patrones aplicados:
 | Alineación espacial por homografía (SIFT u ORB, FLANN o fuerza bruta, RANSAC) | Completado |
 | Comparación de profundidad, clasificación y metrología 3D (distancia en cm) | Completado |
 | Segmentación semántica con SegFormer-B4 (ADE20K) y etiquetas en español | Completado, verificada en GPU NVIDIA |
-| Fotos reales, par 1 (1920x1080, caja desplazada sobre una cama) | Verificada: 1 desplazamiento, "caja", 63.3 cm |
-| Fotos reales, par 2 (taza desplazada, caja movida 5.6 cm, cubo retirado) | Verificada: los 3 cambios, sin falsos positivos; caja medida en 6.5 cm (error de 0.9 cm) |
+| Fotos reales, par 1 (1920x1080, caja desplazada sobre una cama) | Verificada: 1 desplazamiento, "caja", 62.6 cm |
+| Fotos reales, par 2 (taza desplazada, caja movida 5.6 cm, cubo retirado) | Verificada: los 3 cambios, sin falsos positivos; caja medida en 6.6 cm (error de 1.0 cm) |
 | `PipelineController` y `ComparisonReport` con imagen anotada | Completado |
-| Fotos reales, par 3 (caja girada y movida, taza colocada encima de la caja) | Verificada: 2 desplazamientos separados (caja 47.5 cm, taza 87.0 cm) |
-| Pruebas | 203 unitarias + 20 de integración |
-| Ventana principal con el reporte | Pendiente |
+| Fotos reales, par 3 (caja girada y movida, taza colocada encima de la caja) | Verificada: 2 desplazamientos separados (caja 47.3 cm, taza 86.8 cm) |
+| Ventana principal: análisis en segundo plano con progreso, reporte por objeto, zoom, exportación (PNG + TXT/JSON) y guardado de la imagen | Completado |
+| Verificación de escena interior (RF-012) con la segmentación | Completado; fotos de exterior rechazadas (99.5 % y 99.7 % de exterior), interiores del proyecto entre 0 % y 0.2 % |
+| Parámetros de cámara por foto: perfil calibrado, distancia focal EXIF o estimación por campo de visión | Completado |
+| Calibración con tablero de ajedrez (`scripts/calibrate_camera.py`) | Herramienta completa y verificada con una cámara virtual; falta calibrar la cámara física |
+| Análisis completo en CPU (RF-010) | Medido: 6.0 s (640x480) y 9.0 s (1920x1080) por par con los modelos cargados; mismos cambios que en GPU |
+| Historial de comparaciones de la sesión (RF-014) | Pendiente |
+| Pruebas | 288 unitarias + 20 de integración |
 
 ### Rendimiento medido
 
@@ -110,6 +119,21 @@ los modelos ya cargados):
 El primer análisis, que incluye la carga de ambos modelos, tarda ~7 s. El pico de memoria de
 GPU con ambos modelos es de 869 MiB.
 
+Análisis completo en CPU frente a GPU, `python -m scripts.benchmark_pipeline` (16 de noviembre
+de 2026; media de 3 análisis con los modelos cargados; el primer análisis incluye la carga):
+
+| Par | Hardware | Primer análisis (carga) | Con modelos en memoria | Profundidad | Segmentación |
+|---|---|---|---|---|---|
+| Sintético 640x480 | CPU | 16.45 s (10.03 s) | 5.98 s | 1.85 s | 3.94 s |
+| Sintético 640x480 | RTX 3070 | 3.51 s (1.72 s) | 0.34 s | 0.06 s | 0.18 s |
+| Real 1920x1080 (par 2) | CPU | — | 8.96 s | 2.84 s | 4.98 s |
+| Real 1920x1080 (par 2) | RTX 3070 | — | 0.79 s | 0.08 s | 0.19 s |
+
+En CPU la segmentación (SegFormer-B4) es la etapa más lenta. Ambos dispositivos detectan los
+mismos cambios; las distancias difieren en 0.1-0.2 cm por la precisión mixta de la GPU. La carga
+de los modelos depende del disco: con los pesos ya en la caché del sistema baja a 1.7 s en GPU;
+en la primera ejecución tras encender el equipo puede tardar varios segundos más.
+
 ## Requisitos de las imágenes de entrada
 
 | Criterio | Valor | Efecto si no se cumple |
@@ -118,6 +142,13 @@ GPU con ambos modelos es de 869 MiB.
 | Resolución mínima | 640x480 (cualquier orientación) | Se rechaza |
 | Color | RGB, 8 bits por canal (RGBA y paleta se convierten a RGB) | Se rechaza |
 | Iluminación | Luminancia media >= 40 (escala 0-255) | Se procesa con advertencia |
+| Escena interior | Como máximo 25 % de la foto con clases de exterior (cielo, árbol, césped, tierra, montaña, mar, edificio...) según la segmentación | El análisis se detiene antes de la comparación e indica qué foto reemplazar |
+
+La comprobación de escena interior (RF-012) usa la segmentación de SegFormer, así que ocurre
+durante el análisis, no al cargar la foto. Las plantas no cuentan como exterior, porque las
+macetas son comunes dentro de una habitación. Se configura con
+`segmentation.check_indoor_scene` y `segmentation.max_outdoor_percent`, y no se aplica si la
+segmentación está desactivada.
 
 Para obtener resultados confiables, tome ambas fotografías desde la misma posición y con la
 misma orientación de cámara, con iluminación similar.
@@ -162,16 +193,37 @@ Revise la licencia de cada checkpoint en su ficha de Hugging Face antes de un us
 la variante *Small* se distribuye bajo Apache-2.0 y las variantes *Base* y *Large* bajo
 CC-BY-NC-4.0.
 
-## Diálogo de selección de imágenes
+## Aplicación de escritorio
 
 ```bash
 python -m ui                     # con la configuración por defecto
 python -m ui settings.json       # con un archivo de configuración
 ```
 
-El diálogo tiene un panel "Antes" y otro "Después". Cada uno permite **Cargar archivo...** o
-**Capturar** desde la cámara indicada en el selector "Cámara". Cada imagen se valida al
-cargarla y muestra su miniatura con un estado:
+La ventana principal guía el análisis en tres pasos:
+
+1. **Elija las dos fotos.** Un panel "Antes" y otro "Después" (detallados abajo). Las
+   advertencias de las fotos, como la de baja luz, aparecen en un aviso amarillo.
+2. **Analizar diferencias.** El análisis corre en un hilo de fondo (`ui/pipeline_worker.py`),
+   así que la ventana no se congela; una barra muestra la etapa en curso. Si falla, la
+   ventana vuelve al paso 1 con un aviso rojo y conserva las fotos para reintentar.
+3. **Resultado.** A la izquierda, la imagen con los cambios marcados (rueda del ratón para
+   acercar o alejar, arrastrar para moverse). A la derecha, un aviso verde si no hubo cambios
+   o una tarjeta por objeto (tipo de cambio, categoría, distancia en cm y una explicación),
+   las advertencias en amarillo y los tiempos. **Exportar reporte...** guarda la imagen en PNG
+   y un resumen en texto (`.txt`) o JSON (`.json`) con el mismo nombre. **Guardar imagen...**
+   (también en el menú Archivo, Ctrl+S) guarda solo la imagen con los cambios marcados, en PNG
+   y a su resolución original, sin importar el zoom en pantalla.
+
+El menú y la barra de herramientas ofrecen **Nuevo análisis**, **Cargar fotos...** (una foto
+llena el siguiente panel vacío; dos fotos se toman como "Antes" y "Después"), **Capturar de
+cámara**, **Exportar...** y **Acerca de**. Los modelos se cargan en el primer análisis y se
+reutilizan en los siguientes; se liberan al cerrar la ventana.
+
+### Paneles de selección de imágenes
+
+Cada panel permite **Cargar archivo...** o **Capturar** desde la cámara indicada en el selector
+"Cámara". Cada imagen se valida al cargarla y muestra su miniatura con un estado:
 
 | Estado | Significado | ¿Permite continuar? |
 |---|---|---|
@@ -181,9 +233,14 @@ cargarla y muestra su miniatura con un estado:
 | ERROR COLOR | No es RGB de 8 bits (p. ej. escala de grises) | No |
 | ERROR FORMATO / ERROR ARCHIVO | Extensión no admitida, archivo dañado o inexistente | No |
 | ERROR CÁMARA | La cámara no está disponible o no entregó imagen | No |
+| NO ES INTERIOR | El análisis la rechazó porque muestra una escena de exterior (se asigna al analizar, no al cargar) | No, hasta reemplazarla |
 
-"Continuar" se habilita cuando ambas imágenes son utilizables; al aceptar, el diálogo imprime
-el resumen del par seleccionado.
+VÁLIDA y ADVERTENCIA LUZ solo indican que la foto cumple los requisitos técnicos (formato, color,
+resolución e iluminación); el panel lo aclara, y avisa que la comprobación de interior ocurre al
+analizar.
+
+"Analizar diferencias" se habilita cuando ambas imágenes son utilizables. Los mismos paneles
+forman `ImageSelectionDialog`, un diálogo independiente con el botón "Continuar".
 
 Si una computadora tiene varias cámaras (por ejemplo, una cámara infrarroja o virtual además de
 la webcam), la numeración depende del sistema operativo. Pruebe con 0, 1, 2... o fije el valor en
@@ -226,6 +283,11 @@ python -m scripts.benchmark_depth                          # GPU si está dispon
 python -m scripts.benchmark_depth --device cpu             # forzar CPU
 python -m scripts.benchmark_depth --full-precision         # GPU en float32
 python -m scripts.benchmark_depth --variant base --repetitions 20 --image ruta/a/foto.jpg
+
+# Análisis completo (profundidad, alineación, segmentación y comparación)
+python -m scripts.benchmark_pipeline                       # CPU y GPU, pares de muestra
+python -m scripts.benchmark_pipeline --devices cpu --repetitions 5
+python -m scripts.benchmark_pipeline --pair antes.jpg despues.jpg
 ```
 
 ## Uso programático
@@ -321,6 +383,7 @@ necesarios:
   "depth": { "variant": "base", "device": "cuda", "half_precision": true },
   "camera": { "fx": 1450.0, "fy": 1450.0, "cx": 960.0, "cy": 540.0,
               "reference_width": 1920, "reference_height": 1080 },
+  "camera_estimation": { "use_exif": true, "horizontal_fov_deg": 63.3 },
   "capture": { "camera_index": 1 },
   "alignment": { "detector": "sift", "matcher": "flann", "ratio_test": 0.75,
                  "ransac_reprojection_threshold": 3.0, "min_inliers": 10 },
@@ -332,9 +395,43 @@ necesarios:
 El detector `akaze` requiere `opencv-contrib-python`: desde OpenCV 5, AKAZE se distribuye en
 los módulos adicionales. SIFT (por defecto) y ORB vienen incluidos en `opencv-python`.
 
-Los intrínsecos por defecto corresponden a una cámara típica de 640x480 y se reescalan con
-`CameraIntrinsics.scaled_to(width, height)`. Para mediciones en centímetros precisas, use los
-valores de una calibración de su cámara.
+### Parámetros de la cámara
+
+La distancia en centímetros usa la distancia focal (`fx`, `fy`) y el centro óptico (`cx`, `cy`)
+de la cámara que tomó la foto "antes". Como dependen de la cámara, la resolución y el zoom, el
+sistema elige para cada foto la fuente más precisa disponible
+([utils/camera_model.py](utils/camera_model.py)):
+
+1. **Perfil calibrado** (`camera` en la configuración), si la foto tiene la misma proporción
+   (por ejemplo 16:9) que la calibración; se reescala a la resolución de la foto.
+2. **Distancia focal EXIF**: la equivalente a 35 mm que guardan los celulares y las cámaras
+   digitales (`fx = f35 · diagonal_px / 43.27`), con píxeles cuadrados y el centro de la imagen.
+3. **Estimación por campo de visión** (`camera_estimation.horizontal_fov_deg`, 63.3° por
+   defecto, típico de webcams y celulares) para fotos sin datos, como las capturas de la webcam.
+
+El reporte indica qué fuente se usó (`report.intrinsics_source`, `report.focal_length_px`), y la
+pantalla de resultado y los archivos exportados lo explican en lenguaje sencillo. La
+profundidad no depende de estos parámetros (el modelo la entrega en metros); influyen en el
+movimiento lateral y vertical del objeto.
+
+Para calibrar una cámara con un tablero de ajedrez:
+
+1. Imprima un tablero de 10 x 7 cuadros (9 x 6 esquinas internas), péguelo en algo plano y mida
+   con regla el lado de un cuadro.
+2. Tome entre 15 y 20 fotos con la misma cámara, resolución y zoom que usará en los análisis,
+   con el tablero completo en distintos ángulos, distancias y posiciones (incluidos los bordes).
+   Con la webcam, el propio script puede tomarlas: cada Enter guarda una foto.
+3. Calibre y guarde el perfil en un archivo de configuración:
+
+```bash
+python -m scripts.calibrate_camera fotos_tablero --capture 15 --camera 0   # opcional: tomar las fotos
+python -m scripts.calibrate_camera fotos_tablero --square-mm 25 --output settings.json
+python -m ui settings.json
+```
+
+El script informa el error de calibración (menos de 0.5 px es bueno) y las fotos en las que no
+encontró el tablero. El perfil se aplica a todas las fotos con su misma proporción, así que
+calibre la cámara con la que realmente toma las fotos que analiza.
 
 ## Estructura del proyecto
 
@@ -349,8 +446,8 @@ valores de una calibración de su cámara.
 |   `-- comparison/      Diferencia de profundidad, metrología 3D y clasificación
 |-- controllers/         Orquestación del pipeline (PipelineController)
 |-- utils/               Validación de imágenes, visualización y utilidades numéricas
-|-- ui/                  Interfaz gráfica (diálogo de selección de imágenes)
-|-- scripts/             Medición de latencia
+|-- ui/                  Interfaz gráfica (ventana principal, resultado y selección de imágenes)
+|-- scripts/             Medición de latencia (profundidad y análisis completo) y calibración
 |-- tests/               Pruebas con pytest
 |-- data/samples/        Imágenes de ejemplo y resultados de muestra
 |-- pyproject.toml       Configuración de pytest
@@ -360,9 +457,11 @@ valores de una calibración de su cámara.
 
 ## Próximos pasos
 
-1. **Ventana principal**: interfaz PySide6 que integre el diálogo de selección con el
-   `PipelineController`, ejecute el análisis en segundo plano y muestre la imagen anotada y la
-   lista de cambios en lenguaje no técnico.
-2. **Historial de la sesión**: conservar los reportes de los análisis realizados.
-3. **Validación con más fotos reales**: más pares (objetos retirados, varios cambios, cámara en
-   mano), distancias medidas con cinta y una calibración de la cámara utilizada.
+1. **Historial de la sesión (RF-014)**: conservar los reportes de los análisis realizados.
+2. **Escena interior**: prueba de integración con fotos de exterior y calibración del umbral del
+   25 % con casos límite (habitaciones con ventanales, balcones, patios techados).
+3. **Validación con más fotos reales**: calibrar con el tablero la cámara que toma las fotos,
+   y más pares (objetos retirados, varios cambios, cámara en mano) con distancias medidas con
+   cinta, para cuantificar el error de cada fuente de parámetros.
+4. **Captura desde la cámara en segundo plano**: hoy se ejecuta en el hilo de la interfaz y la
+   ventana puede pausarse mientras la cámara se estabiliza.

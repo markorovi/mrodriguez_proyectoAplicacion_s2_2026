@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Optional
 
 import numpy as np
 
@@ -15,11 +16,16 @@ class ImageData:
     ``pixels`` follows the ``H x W x C`` layout with RGB channel order when it
     has three channels. Acquisition sources do not guarantee conformity;
     :class:`utils.image_validator.ImageValidator` is responsible for that.
+
+    ``focal_length_35mm`` is the 35 mm-equivalent focal length (mm) that the
+    camera wrote in the file's EXIF data, when present; it lets the analysis
+    estimate the camera parameters of photos from any phone or camera.
     """
 
     pixels: np.ndarray
     source: str
     acquired_at: datetime = field(default_factory=datetime.now)
+    focal_length_35mm: Optional[float] = None
 
     @property
     def height(self) -> int:

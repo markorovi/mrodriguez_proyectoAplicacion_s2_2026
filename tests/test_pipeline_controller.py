@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from config import AlignmentSettings, AppSettings, DevicePreference, SegmentationSettings
-from controllers import PipelineController
+from controllers import STAGES, PipelineController
 from models import (
     UNIDENTIFIED_LABEL,
     AlignmentError,
@@ -17,8 +17,6 @@ from services.inference import DeviceManager
 from services.segmentation import SegFormerSegmenter
 from tests.doubles import FakeSegmentationModelLoader, SceneDepthEstimator
 from utils.synthetic_scene import SceneObject, SyntheticSceneBuilder
-
-STAGES = {"acquisition", "depth", "alignment", "segmentation", "comparison", "rendering"}
 
 
 @pytest.fixture(scope="module")
@@ -86,13 +84,46 @@ def test_report_includes_alignment_timings_and_annotated_image(estimator, before
 
     assert report.alignment.succeeded
     assert report.alignment.inliers >= 10
-    assert set(report.stage_seconds) == STAGES
+    assert set(report.stage_seconds) == set(STAGES)
     assert report.total_seconds == pytest.approx(sum(report.stage_seconds.values()))
     assert report.annotated_image.shape == before.pixels.shape
     assert report.annotated_image.dtype == np.uint8
     # Boxes and captions were drawn over the "after" view.
     assert np.count_nonzero(np.any(report.annotated_image != moved.pixels, axis=2)) > 500
     assert report.comparison.difference_m.shape == (before.height, before.width)
+
+
+def test_progress_announces_every_stage_in_order(estimator, before, moved):
+    announced = []
+    _controller(estimator).analyze(before, moved, progress=announced.append)
+    assert tuple(announced) == STAGES
+
+
+def test_progress_is_announced_when_analyzing_files(estimator, before, moved, write_image):
+    announced = []
+    _controller(estimator).analyze_files(
+        write_image(before.pixels, "before.png"), write_image(moved.pixels, "after.png"), announced.append
+    )
+    assert tuple(announced) == STAGES
+
+
+def test_models_are_loaded_in_their_own_stage_only_the_first_time(estimator, before, moved):
+    controller = _controller(estimator)
+    assert not controller.models_loaded
+
+    first = controller.analyze(before, moved)
+    assert controller.models_loaded
+    assert "loading" in first.stage_seconds
+
+    announced = []
+    second = controller.analyze(before, moved, progress=announced.append)
+    assert "loading" not in second.stage_seconds
+    assert tuple(announced) == tuple(stage for stage in STAGES if stage != "loading")
+
+
+def test_controller_exposes_its_acquisition_service(estimator):
+    controller = _controller(estimator)
+    assert controller.acquisition.validator.settings == controller.settings.image
 
 
 def test_both_views_go_through_depth_estimation(estimator, before, moved):

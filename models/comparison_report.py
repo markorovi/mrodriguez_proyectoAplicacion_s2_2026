@@ -9,6 +9,7 @@ from typing import Optional
 import numpy as np
 
 from models.alignment import AlignmentReport
+from models.camera_model import IntrinsicsSource
 from models.segmentation_mask import SemanticLabel
 
 
@@ -18,6 +19,18 @@ class ChangeType(str, Enum):
     REMOVED = "RETIRADO / DESAPARICIÓN"
     DISPLACED = "DESPLAZAMIENTO"
     ADDED = "APARICIÓN"
+
+    @property
+    def title(self) -> str:
+        """Plain-language name shown to the user, on the image and in the report."""
+        return _CHANGE_TITLES[self]
+
+
+_CHANGE_TITLES = {
+    ChangeType.REMOVED: "Objeto retirado",
+    ChangeType.DISPLACED: "Objeto desplazado",
+    ChangeType.ADDED: "Objeto nuevo ingresado",
+}
 
 
 @dataclass(frozen=True)
@@ -119,7 +132,8 @@ class ComparisonReport:
 
     ``annotated_image`` is the aligned "after" view (RGB) with the changed
     objects drawn on it. ``stage_seconds`` maps each pipeline stage to its
-    duration.
+    duration. ``intrinsics_source`` and ``focal_length_px`` tell which camera
+    parameters the 3-D measurements used (see :mod:`utils.camera_model`).
     """
 
     objects: tuple[ChangedObject, ...]
@@ -128,6 +142,8 @@ class ComparisonReport:
     annotated_image: np.ndarray
     warnings: tuple[str, ...] = ()
     stage_seconds: dict[str, float] = field(default_factory=dict)
+    intrinsics_source: Optional[IntrinsicsSource] = None
+    focal_length_px: Optional[float] = None
 
     @property
     def has_changes(self) -> bool:

@@ -22,14 +22,15 @@ from models.acquired_image import AcquiredImage
 from models.exceptions import InvalidImageError, SceneDiffError
 from models.image_data import ImageData
 from services.capture.acquisition_service import ImageAcquisitionService
+from ui import theme
 from ui.image_status import ImageStatus, Severity, status_for_error, status_for_report
 from ui.qt_image import to_qpixmap
 
 _BADGE_COLORS = {
-    Severity.NONE: "#757575",
-    Severity.OK: "#2e7d32",
-    Severity.WARNING: "#b26a00",
-    Severity.ERROR: "#c62828",
+    Severity.NONE: theme.SURFACE_RAISED,
+    Severity.OK: "#3d5a44",
+    Severity.WARNING: "#5e5131",
+    Severity.ERROR: "#633a36",
 }
 
 
@@ -90,11 +91,36 @@ class ImageSlotWidget(QGroupBox):
     def capture(self) -> None:
         self._attempt(lambda: self._service.from_camera(self._camera_index()))
 
+    def mark_not_indoor(self, outdoor_percent: float) -> None:
+        """Flag the loaded image as rejected by the analysis because it shows an outdoor scene.
+
+        The image stays loaded and visible, but is no longer usable until it is replaced.
+        """
+        if self._acquired is None:
+            return
+        self._set_status(ImageStatus.NOT_INDOOR)
+        self._detail.setText(
+            f"{self._describe(self._acquired.image)}\n"
+            f"No parece un espacio interior: cerca del {outdoor_percent:.0f} % de la foto muestra "
+            "elementos de exterior (cielo, árboles, edificios...). Reemplácela por una foto "
+            "tomada dentro de una habitación o área de trabajo."
+        )
+        self.changed.emit()
+
+    def clear(self) -> None:
+        """Forget the current image and return to the empty state."""
+        self._acquired = None
+        self._thumbnail.clear()
+        self._render_empty()
+        self.changed.emit()
+
     def _build(self) -> None:
         self._thumbnail = QLabel()
         self._thumbnail.setFixedSize(self.THUMBNAIL_SIZE)
         self._thumbnail.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._thumbnail.setStyleSheet("background:#1e1e1e; color:#9e9e9e; border-radius:4px;")
+        self._thumbnail.setStyleSheet(
+            f"background:{theme.IMAGE_BACKGROUND}; color:{theme.TEXT_MUTED}; border-radius:4px;"
+        )
 
         self._badge = QLabel()
         self._badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -146,7 +172,9 @@ class ImageSlotWidget(QGroupBox):
         self._acquired = acquired
         self._set_status(status_for_report(acquired.report))
         self._set_preview(acquired.image)
-        self._detail.setText("\n".join([self._describe(acquired.image), *acquired.warnings]))
+        self._detail.setText(
+            "\n".join([self._describe(acquired.image), _checked_on_load(self._status), *acquired.warnings])
+        )
 
     def _render_failure(self, error: SceneDiffError) -> None:
         self._acquired = None
@@ -177,7 +205,7 @@ class ImageSlotWidget(QGroupBox):
         self._status = status
         self._badge.setText(status.label)
         self._badge.setStyleSheet(
-            f"background:{_BADGE_COLORS[status.severity]}; color:white; font-weight:bold;"
+            f"background:{_BADGE_COLORS[status.severity]}; color:{theme.TEXT}; font-weight:bold;"
             "padding:4px 8px; border-radius:4px;"
         )
 
@@ -185,3 +213,11 @@ class ImageSlotWidget(QGroupBox):
     def _describe(image: ImageData) -> str:
         name = Path(image.source).name if not image.source.startswith("camera:") else image.source
         return f"{name} | {image.width}x{image.height}"
+
+
+def _checked_on_load(status: ImageStatus) -> str:
+    """What an accepted image passed, and what is only checked later by the analysis."""
+    checked = "Formato, color y resolución correctos" if status is ImageStatus.LOW_LIGHT else (
+        "Formato, color, resolución e iluminación correctos"
+    )
+    return f"{checked}. Que sea un espacio interior se comprueba al analizar."

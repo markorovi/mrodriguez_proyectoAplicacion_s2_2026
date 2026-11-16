@@ -31,6 +31,8 @@ class ImageStatus(Enum):
     FORMAT_ERROR = ("ERROR FORMATO", Severity.ERROR)
     FILE_ERROR = ("ERROR ARCHIVO", Severity.ERROR)
     CAMERA_ERROR = ("ERROR CÁMARA", Severity.ERROR)
+    # Set by the analysis, not by loading: the check needs the segmentation.
+    NOT_INDOOR = ("NO ES INTERIOR", Severity.ERROR)
 
     def __init__(self, label: str, severity: Severity) -> None:
         self.label = label

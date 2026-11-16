@@ -95,17 +95,40 @@ ADE20K_STRUCTURAL_CLASSES: frozenset[str] = frozenset(
 )
 
 
+# Open-air scenery: a photo largely covered by these was not taken indoors.
+# "plant" is left out on purpose: potted plants are common indoor objects.
+ADE20K_OUTDOOR_CLASSES: frozenset[str] = frozenset(
+    {
+        "sky", "tree", "grass", "earth", "mountain", "sea", "field", "building",
+        "skyscraper", "road", "sidewalk", "sand", "river", "hill", "land", "rock",
+        "palm", "lake", "waterfall", "water", "house", "path",
+    }
+)
+
+# Largest share of a photo (percent) that outdoor classes may cover in an indoor scene.
+MAX_OUTDOOR_PERCENT = 25.0
+
+
 def normalize_class_name(name: str) -> str:
     return name.strip().lower()
 
 
 def structural_class_ids(id2label: Mapping[int, str]) -> frozenset[int]:
     """Ids of ``id2label`` whose class is part of the scene structure."""
-    return frozenset(
-        class_id
-        for class_id, name in id2label.items()
-        if normalize_class_name(name) in ADE20K_STRUCTURAL_CLASSES
-    )
+    return _ids_of(id2label, ADE20K_STRUCTURAL_CLASSES)
+
+
+def outdoor_class_ids(id2label: Mapping[int, str]) -> frozenset[int]:
+    """Ids of ``id2label`` whose class belongs to open-air scenery.
+
+    Ids are resolved by name, like :func:`structural_class_ids`, so they
+    follow the numbering of whichever checkpoint produced the mask.
+    """
+    return _ids_of(id2label, ADE20K_OUTDOOR_CLASSES)
+
+
+def _ids_of(id2label: Mapping[int, str], names: frozenset[str]) -> frozenset[int]:
+    return frozenset(class_id for class_id, name in id2label.items() if normalize_class_name(name) in names)
 
 
 class RegionLabeler:
@@ -114,15 +137,42 @@ class RegionLabeler:
     A region is named only when its most frequent non-structural class
     covers at least ``min_coverage`` of it and that class has a known
     translation; otherwise it is an unidentified object.
+
+    It also tells whether a whole photo shows an indoor scene
+    (:meth:`validate_indoor_scene`).
     """
 
     def __init__(
-        self, min_coverage: float = 0.25, names: Mapping[str, str] = ADE20K_SPANISH_NAMES
+        self,
+        min_coverage: float = 0.25,
+        names: Mapping[str, str] = ADE20K_SPANISH_NAMES,
+        max_outdoor_percent: float = MAX_OUTDOOR_PERCENT,
     ) -> None:
         if not 0.0 < min_coverage <= 1.0:
             raise ValueError("Minimum coverage must be in (0, 1].")
+        if not 0.0 <= max_outdoor_percent <= 100.0:
+            raise ValueError("Maximum outdoor percentage must be in [0, 100].")
         self._min_coverage = min_coverage
         self._names = {normalize_class_name(key): value for key, value in names.items()}
+        self._max_outdoor_percent = max_outdoor_percent
+
+    def validate_indoor_scene(
+        self, mask: SegmentationMask, region: Optional[np.ndarray] = None
+    ) -> tuple[bool, float]:
+        """``(is_indoor, outdoor_percent)`` for the photo segmented in ``mask``.
+
+        ``outdoor_percent`` is the share (0-100) of the pixels, or of the
+        pixels inside ``region`` when given, that show open-air scenery
+        (:data:`ADE20K_OUTDOOR_CLASSES`). The scene counts as indoor while
+        that share is at most ``max_outdoor_percent``; a window showing the
+        sky or a tree does not make a room an outdoor scene.
+        """
+        ids = mask.class_ids if region is None else mask.class_ids[region.astype(bool)]
+        if ids.size == 0:
+            return True, 0.0
+        outdoor = np.isin(ids, np.fromiter(outdoor_class_ids(mask.id2label), dtype=np.int64))
+        percent = 100.0 * float(np.count_nonzero(outdoor)) / ids.size
+        return percent <= self._max_outdoor_percent, percent
 
     def describe(self, mask: Optional[SegmentationMask], region: np.ndarray) -> SemanticLabel:
         if mask is None:

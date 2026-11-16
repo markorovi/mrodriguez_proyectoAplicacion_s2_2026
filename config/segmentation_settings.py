@@ -35,3 +35,13 @@ class SegmentationSettings(BaseModel):
         le=1.0,
         description="Fraction of a region a class must cover to name the object after it.",
     )
+    check_indoor_scene: bool = Field(
+        default=True,
+        description="Reject a photo whose segmentation shows mostly open-air scenery (sky, trees, grass...).",
+    )
+    max_outdoor_percent: float = Field(
+        default=25.0,
+        ge=0.0,
+        le=100.0,
+        description="Largest share of a photo (percent) outdoor classes may cover in an indoor scene.",
+    )

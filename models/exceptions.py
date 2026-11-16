@@ -69,3 +69,32 @@ class AlignmentError(SceneDiffError):
 
 class SegmentationError(SceneDiffError):
     """Semantic segmentation could not be completed or its model loaded."""
+
+
+class CalibrationError(SceneDiffError):
+    """The camera could not be calibrated from the given chessboard photos."""
+
+
+class NonIndoorSceneError(SceneDiffError):
+    """One or both photos do not show an indoor space.
+
+    ``outdoor_percent`` maps the name of each rejected photo ("Antes",
+    "Después") to the share of it (0-100) that shows open-air scenery.
+    The message names those photos so the user can replace only them.
+    """
+
+    def __init__(self, outdoor_percent: dict[str, float]) -> None:
+        self.outdoor_percent = dict(outdoor_percent)
+        names = " y ".join(f"«{name}»" for name in self.outdoor_percent)
+        if len(self.outdoor_percent) == 1:
+            subject = f"La fotografía {names} no parece corresponder"
+        else:
+            subject = f"Las fotografías {names} no parecen corresponder"
+        super().__init__(
+            f"{subject} a un espacio interior. Por favor, elija imágenes tomadas "
+            "dentro de una habitación o área de trabajo."
+        )
+
+    @property
+    def views(self) -> tuple[str, ...]:
+        return tuple(self.outdoor_percent)

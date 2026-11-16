@@ -26,6 +26,11 @@ class SemanticLabel:
     def is_identified(self) -> bool:
         return self.class_name is not None
 
+    @property
+    def display_name(self) -> str:
+        """``name`` with an initial capital, e.g. "Caja" or "Objeto no identificado"."""
+        return self.name[:1].upper() + self.name[1:]
+
 
 @dataclass(frozen=True)
 class SegmentationMask:

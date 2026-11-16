@@ -30,7 +30,8 @@ def draw_changes(rgb: np.ndarray, objects: Iterable[ChangedObject]) -> np.ndarra
     Removed objects are boxed at their former position, added objects at
     their new position. A displaced object shows its former position in
     orange, its current position in the color of its change type and an
-    arrow between the two. Captions read ``#id label - type [distance]``.
+    arrow between the two. Captions use the wording of the report, e.g.
+    ``#1 Caja · Objeto desplazado · 47.5 cm``.
     """
     canvas = np.ascontiguousarray(rgb.copy())
     thickness = max(2, round(max(canvas.shape[:2]) / 400))
@@ -58,9 +59,9 @@ def draw_changes(rgb: np.ndarray, objects: Iterable[ChangedObject]) -> np.ndarra
 
 
 def _caption(obj: ChangedObject) -> str:
-    text = f"#{obj.object_id} {obj.label.name} - {obj.change_type.value}"
+    text = f"#{obj.object_id} {obj.label.display_name} · {obj.change_type.title}"
     if obj.distance_cm is not None:
-        text += f" {obj.distance_cm:.1f} cm"
+        text += f" · {obj.distance_cm:.1f} cm"
     return text
 
 

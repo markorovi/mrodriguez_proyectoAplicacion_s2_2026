@@ -57,6 +57,8 @@ def test_required_labels():
     assert ImageStatus.VALID.label == "VÁLIDA"
     assert ImageStatus.LOW_LIGHT.label == "ADVERTENCIA LUZ"
     assert ImageStatus.RESOLUTION_ERROR.label == "ERROR RESOLUCIÓN"
+    assert ImageStatus.NOT_INDOOR.label == "NO ES INTERIOR"
+    assert not ImageStatus.NOT_INDOOR.is_usable
 
 
 def test_only_valid_and_warning_states_are_usable():
