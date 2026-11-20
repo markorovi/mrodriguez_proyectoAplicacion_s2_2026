@@ -26,8 +26,10 @@ from config.paths import SAMPLES_DIR
 from config.settings import AppSettings
 from controllers.pipeline_controller import STAGES, PipelineController
 from models.comparison_report import ComparisonReport
+from models.session_history import SessionHistory
 from ui import report_text, theme
 from ui.banner import Banner, BannerKind
+from ui.history_dialog import HistoryDialog
 from ui.image_selection_panel import ImageSelectionPanel
 from ui.image_slot_widget import ImageSlotWidget
 from ui.pipeline_worker import PipelineWorker
@@ -73,6 +75,9 @@ class MainWindow(QMainWindow):
         self._settings = self._controller.settings
         self._worker: Optional[PipelineWorker] = None
         self._step = Step.SELECTION
+        # One history per window: it lives as long as the session and is never saved (RF-014).
+        self._history = SessionHistory()
+        self._analyzed_sources: tuple[str, str] = ("", "")
 
         self.setWindowTitle(APP_TITLE)
         self._fit_to_screen()
@@ -98,6 +103,14 @@ class MainWindow(QMainWindow):
     @property
     def report_widget(self) -> ReportWidget:
         return self._report
+
+    @property
+    def history(self) -> SessionHistory:
+        return self._history
+
+    @property
+    def can_open_history(self) -> bool:
+        return self._history_action.isEnabled()
 
     @property
     def can_analyze(self) -> bool:
@@ -136,6 +149,7 @@ class MainWindow(QMainWindow):
         self._error.hide()
         self._progress.setValue(0)
         self._stage.setText(report_text.stage_description(STAGES[0]))
+        self._analyzed_sources = (pair[0].image.source, pair[1].image.source)
         worker = PipelineWorker(self._controller, *pair, parent=self)
         worker.progress_updated.connect(self._on_progress)
         worker.report_ready.connect(self._on_report)
@@ -183,6 +197,16 @@ class MainWindow(QMainWindow):
         if self._step is Step.REPORT:
             self._report.save_image_with_dialog()
 
+    def history_dialog(self) -> HistoryDialog:
+        """Build the session history window without showing it."""
+        return HistoryDialog(self._history, parent=self)
+
+    def open_history(self) -> None:
+        """Show the comparisons of this session (CU-03); not available while analyzing."""
+        if self.is_analyzing:
+            return
+        self.history_dialog().exec()
+
     @property
     def can_save_image(self) -> bool:
         return self._save_image_action.isEnabled()
@@ -203,6 +227,8 @@ class MainWindow(QMainWindow):
 
     def _on_report(self, report: ComparisonReport) -> None:
         self._progress.setValue(len(STAGES))
+        # Only successful comparisons enter the history; a failed one has no report to review.
+        self._history.add(report, *self._analyzed_sources)
         self._report.show_report(report)
         self._set_step(Step.REPORT)
         self.statusBar().showMessage(report_text.headline(report))
@@ -229,6 +255,8 @@ class MainWindow(QMainWindow):
             action.setEnabled(not busy)
         self._export_action.setEnabled(step is Step.REPORT)
         self._save_image_action.setEnabled(step is Step.REPORT)
+        # Enabled even with an empty history, so the user is told there is nothing yet.
+        self._history_action.setEnabled(not busy)
         self._refresh_selection()
 
     def _refresh_selection(self) -> None:
@@ -304,6 +332,11 @@ class MainWindow(QMainWindow):
         self._export_action.setStatusTip("Guardar la imagen del resultado y un resumen.")
         self._export_action.triggered.connect(self.export_report)
 
+        self._history_action = QAction("Historial...", self)
+        self._history_action.setShortcut(QKeySequence("Ctrl+H"))
+        self._history_action.setStatusTip("Ver los resultados de las comparaciones de esta sesión.")
+        self._history_action.triggered.connect(self.open_history)
+
         about_action = QAction("Acerca de", self)
         about_action.triggered.connect(self._about)
         quit_action = QAction("Salir", self)
@@ -317,6 +350,7 @@ class MainWindow(QMainWindow):
             self._capture_action,
             self._save_image_action,
             self._export_action,
+            self._history_action,
         ):
             file_menu.addAction(action)
         file_menu.addSeparator()
@@ -326,7 +360,13 @@ class MainWindow(QMainWindow):
         toolbar = QToolBar("Acciones principales")
         toolbar.setMovable(False)
         toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
-        for action in (self._new_action, self._load_action, self._capture_action, self._export_action):
+        for action in (
+            self._new_action,
+            self._load_action,
+            self._capture_action,
+            self._export_action,
+            self._history_action,
+        ):
             toolbar.addAction(action)
         toolbar.addSeparator()
         toolbar.addAction(about_action)

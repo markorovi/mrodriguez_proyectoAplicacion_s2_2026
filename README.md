@@ -91,8 +91,8 @@ Interfaz de usuario final (ACT-09) y verificación de escena interior (RF-012) c
 | Parámetros de cámara por foto: perfil calibrado, distancia focal EXIF o estimación por campo de visión | Completado |
 | Calibración con tablero de ajedrez (`scripts/calibrate_camera.py`) | Herramienta completa y verificada con una cámara virtual; falta calibrar la cámara física |
 | Análisis completo en CPU (RF-010) | Medido: 6.0 s (640x480) y 9.0 s (1920x1080) por par con los modelos cargados; mismos cambios que en GPU |
-| Historial de comparaciones de la sesión (RF-014) | Pendiente |
-| Pruebas | 288 unitarias + 20 de integración |
+| Historial de comparaciones de la sesión (RF-014) | Completado: lista de los análisis de la sesión, del más reciente al más antiguo, con el reporte de cada uno (en memoria, máximo 20) |
+| Pruebas | 302 unitarias + 20 de integración |
 
 ### Rendimiento medido
 
@@ -217,8 +217,14 @@ La ventana principal guía el análisis en tres pasos:
 
 El menú y la barra de herramientas ofrecen **Nuevo análisis**, **Cargar fotos...** (una foto
 llena el siguiente panel vacío; dos fotos se toman como "Antes" y "Después"), **Capturar de
-cámara**, **Exportar...** y **Acerca de**. Los modelos se cargan en el primer análisis y se
-reutilizan en los siguientes; se liberan al cerrar la ventana.
+cámara**, **Exportar...**, **Historial...** (Ctrl+H) y **Acerca de**. Los modelos se cargan en
+el primer análisis y se reutilizan en los siguientes; se liberan al cerrar la ventana.
+
+**Historial...** abre la lista de los análisis de la sesión activa, del más reciente al más
+antiguo, y muestra el reporte completo del que se elija, que también se puede exportar desde
+ahí. Solo guarda los análisis que terminaron con un resultado, conserva como máximo los 20
+últimos y se pierde al cerrar la aplicación, porque reside en memoria. No está disponible
+mientras se analiza un par.
 
 ### Paneles de selección de imágenes
 
@@ -457,7 +463,8 @@ calibre la cámara con la que realmente toma las fotos que analiza.
 
 ## Próximos pasos
 
-1. **Historial de la sesión (RF-014)**: conservar los reportes de los análisis realizados.
+1. **Documentación de soporte**: manual integrado en la aplicación (RIS-001) e imágenes de
+   ejemplo precargadas (RIS-002).
 2. **Escena interior**: prueba de integración con fotos de exterior y calibración del umbral del
    25 % con casos límite (habitaciones con ventanales, balcones, patios techados).
 3. **Validación con más fotos reales**: calibrar con el tablero la cámara que toma las fotos,

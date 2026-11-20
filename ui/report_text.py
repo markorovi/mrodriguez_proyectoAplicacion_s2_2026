@@ -7,8 +7,13 @@ from typing import Any, Optional
 
 from models.camera_model import IntrinsicsSource
 from models.comparison_report import BoundingBox, ChangedObject, ChangeType, ComparisonReport
+from models.session_history import HistoryEntry
 
 NO_CHANGES_MESSAGE = "No se detectaron cambios en la escena"
+
+HISTORY_EMPTY_MESSAGE = (
+    "Aún no hay comparaciones en esta sesión. Cuando analice un par de fotos, aparecerá aquí."
+)
 
 _CAMERA_NOTES: dict[IntrinsicsSource, str] = {
     IntrinsicsSource.CALIBRATED: "Las distancias se calcularon con la calibración de la cámara.",
@@ -46,6 +51,16 @@ def headline(report: ComparisonReport) -> str:
     if count == 0:
         return NO_CHANGES_MESSAGE
     return "Se detectó 1 cambio en la escena" if count == 1 else f"Se detectaron {count} cambios en la escena"
+
+
+def history_title(entry: HistoryEntry) -> str:
+    """Line that identifies a comparison of the session, e.g. "#2 · 14:05 · antes.jpg → después.jpg"."""
+    return f"#{entry.number} · {entry.created_at:%H:%M} · {entry.before_name} → {entry.after_name}"
+
+
+def history_summary(entry: HistoryEntry) -> str:
+    """What that comparison found, in the words of the report's headline."""
+    return headline(entry.report)
 
 
 def category(obj: ChangedObject) -> str:

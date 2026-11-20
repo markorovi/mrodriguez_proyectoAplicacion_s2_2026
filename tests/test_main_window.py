@@ -459,3 +459,86 @@ def test_camera_note_names_the_source(source, words):
 
     report = _report([_changed(ChangeType.DISPLACED)], intrinsics_source=IntrinsicsSource[source])
     assert words in report_text.camera_note(report)
+
+
+# ------------------------------------------------------------- session history
+
+
+def test_each_successful_analysis_enters_the_history_newest_first(window):
+    main = window()
+    _analyze(main)
+    _analyze(main, after=BEFORE)
+
+    entries = main.history.entries
+    assert [entry.number for entry in entries] == [2, 1]
+    assert (entries[1].before_name, entries[1].after_name) == ("scene_before.png", "scene_after_moved.png")
+    assert (entries[0].before_name, entries[0].after_name) == ("scene_before.png", "scene_before.png")
+    assert entries[1].report.has_changes and not entries[0].report.has_changes
+
+
+def test_a_failed_analysis_does_not_enter_the_history(window):
+    main = window(FailingController)
+    _analyze(main)
+    assert main.step is Step.SELECTION
+    assert main.history.is_empty
+
+
+def test_new_analysis_keeps_the_history(window):
+    main = window()
+    _analyze(main)
+    main.new_analysis()
+    assert main.step is Step.SELECTION
+    assert len(main.history) == 1
+
+
+def test_history_window_explains_when_there_is_nothing_yet(window):
+    dialog = window().history_dialog()
+    assert dialog.entry_titles == []
+    assert dialog.shown_entry is None
+    assert dialog.empty_message_text == report_text.HISTORY_EMPTY_MESSAGE
+
+
+def test_history_window_lists_newest_first_and_shows_the_chosen_report(window):
+    main = window()
+    _analyze(main)
+    _analyze(main, after=BEFORE)
+    dialog = main.history_dialog()
+
+    assert len(dialog.entry_titles) == 2
+    assert dialog.entry_titles[0].startswith("#2 · ")
+    assert dialog.entry_titles[1].endswith("scene_before.png → scene_after_moved.png")
+    assert dialog.empty_message_text == ""
+
+    assert dialog.shown_entry.number == 2
+    assert dialog.report_widget.headline_text == report_text.NO_CHANGES_MESSAGE
+    assert dialog.report_widget.card_texts == []
+
+    dialog.select(1)
+    first = main.history.entries[1]
+    assert dialog.shown_entry is first
+    assert dialog.report_widget.headline_text == report_text.headline(first.report)
+    assert len(dialog.report_widget.card_texts) == len(first.report.objects) == 1
+    assert len(main.history) == 2  # Browsing never changes the history.
+
+
+def test_history_is_unavailable_only_while_analyzing(window):
+    main = window()
+    assert main.can_open_history
+
+    main.load_files([BEFORE, MOVED])
+    main.start_analysis()
+    assert main.step is Step.ANALYZING
+    assert not main.can_open_history
+
+    _wait_for(lambda: main.step is not Step.ANALYZING)
+    assert main.step is Step.REPORT
+    assert main.can_open_history
+
+
+def test_history_texts_avoid_technical_terms(window):
+    main = window()
+    _analyze(main)
+    entry = main.history.latest
+    texts = [report_text.HISTORY_EMPTY_MESSAGE, report_text.history_title(entry), report_text.history_summary(entry)]
+    for text in texts:
+        assert not any(term in text.lower() for term in JARGON), text

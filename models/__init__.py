@@ -31,6 +31,7 @@ from models.exceptions import (
 )
 from models.image_data import ImageData
 from models.segmentation_mask import UNIDENTIFIED_LABEL, SegmentationMask, SemanticLabel
+from models.session_history import HistoryEntry, SessionHistory
 from models.validation_report import IssueCode, ValidationIssue, ValidationReport
 
 __all__ = [
@@ -47,6 +48,7 @@ __all__ = [
     "DepthComparison",
     "DepthEstimationError",
     "DepthMap",
+    "HistoryEntry",
     "ImageData",
     "ImageError",
     "ImageLoadError",
@@ -60,6 +62,7 @@ __all__ = [
     "SegmentationError",
     "SegmentationMask",
     "SemanticLabel",
+    "SessionHistory",
     "UNIDENTIFIED_LABEL",
     "UnsupportedImageFormatError",
     "ValidationIssue",
