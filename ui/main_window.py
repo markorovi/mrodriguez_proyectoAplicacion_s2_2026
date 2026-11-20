@@ -30,6 +30,7 @@ from models.session_history import SessionHistory
 from ui import report_text, theme
 from ui.banner import Banner, BannerKind
 from ui.history_dialog import HistoryDialog
+from ui.manual_dialog import ManualDialog
 from ui.image_selection_panel import ImageSelectionPanel
 from ui.image_slot_widget import ImageSlotWidget
 from ui.pipeline_worker import PipelineWorker
@@ -207,6 +208,14 @@ class MainWindow(QMainWindow):
             return
         self.history_dialog().exec()
 
+    def manual_dialog(self) -> ManualDialog:
+        """Build the user manual for the settings this window runs with, without showing it."""
+        return ManualDialog(self._settings, parent=self)
+
+    def open_manual(self) -> None:
+        """Show the user manual; available at any step, also while an analysis runs."""
+        self.manual_dialog().exec()
+
     @property
     def can_save_image(self) -> bool:
         return self._save_image_action.isEnabled()
@@ -337,6 +346,12 @@ class MainWindow(QMainWindow):
         self._history_action.setStatusTip("Ver los resultados de las comparaciones de esta sesión.")
         self._history_action.triggered.connect(self.open_history)
 
+        # Not part of _set_step: the manual stays available at every step.
+        self._manual_action = QAction("Manual de usuario", self)
+        self._manual_action.setShortcut(QKeySequence("F1"))
+        self._manual_action.setStatusTip("Abrir el manual de usuario.")
+        self._manual_action.triggered.connect(self.open_manual)
+
         about_action = QAction("Acerca de", self)
         about_action.triggered.connect(self._about)
         quit_action = QAction("Salir", self)
@@ -355,7 +370,9 @@ class MainWindow(QMainWindow):
             file_menu.addAction(action)
         file_menu.addSeparator()
         file_menu.addAction(quit_action)
-        self.menuBar().addMenu("A&yuda").addAction(about_action)
+        help_menu = self.menuBar().addMenu("A&yuda")
+        help_menu.addAction(self._manual_action)
+        help_menu.addAction(about_action)
 
         toolbar = QToolBar("Acciones principales")
         toolbar.setMovable(False)
@@ -369,6 +386,7 @@ class MainWindow(QMainWindow):
         ):
             toolbar.addAction(action)
         toolbar.addSeparator()
+        toolbar.addAction(self._manual_action)
         toolbar.addAction(about_action)
         self.addToolBar(toolbar)
 

@@ -8,7 +8,9 @@ import time
 import numpy as np
 import pytest
 from PIL import Image
+from PySide6.QtGui import QAction
 from PySide6.QtTest import QTest
+from PySide6.QtWidgets import QMenu, QToolBar
 
 from config import AppSettings, DevicePreference, SegmentationSettings
 from config.paths import SAMPLES_DIR
@@ -542,3 +544,50 @@ def test_history_texts_avoid_technical_terms(window):
     texts = [report_text.HISTORY_EMPTY_MESSAGE, report_text.history_title(entry), report_text.history_summary(entry)]
     for text in texts:
         assert not any(term in text.lower() for term in JARGON), text
+
+
+# ------------------------------------------------------------------ user manual
+
+
+def _actions_by_text(main: MainWindow) -> dict:
+    return {action.text(): action for action in main.findChildren(QAction)}
+
+
+def test_manual_is_in_the_help_menu_and_the_toolbar_with_f1(window):
+    main = window()
+    manual = _actions_by_text(main)["Manual de usuario"]
+    assert manual.shortcut().toString() == "F1"
+
+    help_menu = next(m for m in main.menuBar().findChildren(QMenu) if m.title() == "A&yuda")
+    assert [a.text() for a in help_menu.actions()] == ["Manual de usuario", "Acerca de"]
+    toolbar_texts = [a.text() for a in main.findChildren(QToolBar)[0].actions() if a.text()]
+    assert toolbar_texts[-2:] == ["Manual de usuario", "Acerca de"]
+
+
+def test_manual_is_available_at_every_step(window):
+    main = window()
+    manual = _actions_by_text(main)["Manual de usuario"]
+    assert manual.isEnabled()
+
+    main.load_files([BEFORE, MOVED])
+    main.start_analysis()
+    assert main.step is Step.ANALYZING
+    assert manual.isEnabled()
+
+    _wait_for(lambda: main.step is not Step.ANALYZING)
+    assert main.step is Step.REPORT
+    assert manual.isEnabled()
+
+
+def test_manual_dialog_builds_without_blocking(window):
+    dialog = window().manual_dialog()
+    assert len(dialog.section_titles) == 8
+    assert dialog.current_section == "para-que-sirve"
+    dialog.deleteLater()
+
+
+def test_no_two_actions_share_a_shortcut(window):
+    shortcuts = [
+        action.shortcut().toString() for action in window().findChildren(QAction) if not action.shortcut().isEmpty()
+    ]
+    assert len(shortcuts) == len(set(shortcuts)), shortcuts
