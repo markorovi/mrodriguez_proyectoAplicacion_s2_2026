@@ -150,3 +150,10 @@ def test_manual_mentions_the_examples_menu_that_exists_in_the_window(real_window
     assert f"«{manual_text.EXAMPLES_MENU}»" in first_steps
     menu_titles = {menu.title() for menu in real_window.menuBar().findChildren(QMenu)}
     assert manual_text.EXAMPLES_MENU in menu_titles
+
+
+def test_first_steps_do_not_announce_a_number_of_steps():
+    first_steps = _section(build_manual(), "Primeros pasos")
+    text = _text((first_steps,))
+    assert "tres pasos" not in text
+    assert "Un análisis consta de los pasos siguientes:" in first_steps.paragraphs

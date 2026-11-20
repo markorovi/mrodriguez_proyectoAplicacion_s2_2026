@@ -111,7 +111,7 @@ def _first_steps() -> ManualSection:
         paragraphs=(
             f"Para probar la aplicación sin fotos propias, abra el menú Archivo y elija «{EXAMPLES_MENU}»: "
             "carga con un clic un par de fotos de ejemplo, «Antes» y «Después», listo para analizar.",
-            "Un análisis se hace en tres pasos:",
+            "Un análisis consta de los pasos siguientes:",
         ),
         bullets=(
             f"Elija las dos fotos. En el panel «Antes» pulse «{LOAD_FILE_BUTTON}» para abrir una foto "
