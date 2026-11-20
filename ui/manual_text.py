@@ -206,6 +206,8 @@ def _reading_results() -> ManualSection:
         anchor="como-leer-el-resultado",
         title="Cómo leer el resultado",
         paragraphs=(
+            "Debajo de la imagen con los cambios marcados aparecen las dos fotos originales, «Antes» y "
+            "«Después», para compararlas de un vistazo con el resultado.",
             "Cada objeto que cambió tiene un número, que aparece en la imagen y en su tarjeta, junto "
             "con el tipo de cambio:",
         ),

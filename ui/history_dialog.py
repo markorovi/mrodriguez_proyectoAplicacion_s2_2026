@@ -66,7 +66,8 @@ class HistoryDialog(QDialog):
 
     def _on_row_changed(self, row: int) -> None:
         if 0 <= row < len(self._entries):
-            self._report.show_report(self._entries[row].report)
+            entry = self._entries[row]
+            self._report.show_report(entry.report, originals=entry.originals)
 
     def _build(self) -> None:
         self._list = QListWidget()

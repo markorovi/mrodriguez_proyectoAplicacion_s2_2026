@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+
 from models.comparison_report import ComparisonReport
 
 CAMERA_SOURCE_PREFIX = "camera:"
@@ -26,6 +28,9 @@ class HistoryEntry:
     before_name: str
     after_name: str
     report: ComparisonReport
+    # Reduced copies of the two input photos ("before", "after") to show next to the result;
+    # the full-size photos are not kept, so the history stays small.
+    originals: Optional[tuple[np.ndarray, np.ndarray]] = None
 
 
 @dataclass
@@ -48,14 +53,24 @@ class SessionHistory:
             raise ValueError("The history must keep at least one entry.")
         self._entries = deque(maxlen=self.max_entries)
 
-    def add(self, report: ComparisonReport, before_source: str, after_source: str) -> HistoryEntry:
-        """Record a finished comparison and return its entry."""
+    def add(
+        self,
+        report: ComparisonReport,
+        before_source: str,
+        after_source: str,
+        originals: Optional[tuple[np.ndarray, np.ndarray]] = None,
+    ) -> HistoryEntry:
+        """Record a finished comparison and return its entry.
+
+        ``originals`` should already be reduced: the history keeps whatever it receives.
+        """
         entry = HistoryEntry(
             number=self._next_number,
             created_at=datetime.now(),
             before_name=display_name(before_source),
             after_name=display_name(after_source),
             report=report,
+            originals=originals,
         )
         self._next_number += 1
         self._entries.append(entry)

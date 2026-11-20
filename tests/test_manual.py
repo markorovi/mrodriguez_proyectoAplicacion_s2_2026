@@ -157,3 +157,8 @@ def test_first_steps_do_not_announce_a_number_of_steps():
     text = _text((first_steps,))
     assert "tres pasos" not in text
     assert "Un análisis consta de los pasos siguientes:" in first_steps.paragraphs
+
+
+def test_manual_mentions_the_original_photos_next_to_the_result():
+    reading = _text((_section(build_manual(), "Cómo leer el resultado"),))
+    assert "fotos originales" in reading and "«Antes»" in reading and "«Después»" in reading

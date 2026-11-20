@@ -1,4 +1,4 @@
-"""Result screen: the annotated image and a plain-language summary of the changes."""
+"""Result screen: the annotated image, the two original photos and a plain-language summary."""
 
 from __future__ import annotations
 
@@ -6,7 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union
 
-from PySide6.QtCore import Qt, Signal
+import numpy as np
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,
@@ -24,17 +25,26 @@ from models.comparison_report import ChangedObject, ComparisonReport
 from ui import report_text, theme
 from ui.banner import Banner, BannerKind
 from ui.image_viewer import ZoomableImageView
+from ui.qt_image import thumbnail_pixmap
 from ui.report_export import ReportExportError, export_report, save_annotated_image
 
 _TEXT_FILTER = "Resumen en texto (*.txt)"
 _JSON_FILTER = "Resumen en JSON (*.json)"
 _PNG_FILTER = "Imagen PNG (*.png)"
 
+# Height of the original photos shown next to the result: small enough to leave the
+# annotated image most of the space, large enough to recognize the scene.
+ORIGINAL_THUMBNAIL_HEIGHT = 160
+ORIGINAL_CAPTIONS = ("Antes", "Después")
+
 
 class ReportWidget(QWidget):
-    """Left: zoomable annotated image. Right: summary, one card per object, timings and export.
+    """Left: zoomable annotated image and the two original photos. Right: summary, cards, timings, export.
 
-    ``exported`` carries a confirmation message after the report or the image is saved.
+    The original photos are shown as small thumbnails ("Antes", "Después")
+    under the annotated image, so the inputs, the highlighted change and the
+    text are on screen at the same time. ``exported`` carries a confirmation
+    message after the report or the image is saved.
     """
 
     exported = Signal(str)
@@ -96,10 +106,35 @@ class ReportWidget(QWidget):
     def can_save_image(self) -> bool:
         return self._save_image.isEnabled()
 
-    def show_report(self, report: ComparisonReport) -> None:
+    @property
+    def originals_visible(self) -> bool:
+        return not self._originals.isHidden()
+
+    @property
+    def original_captions(self) -> list[str]:
+        return [caption.text() for caption in self._original_captions] if self.originals_visible else []
+
+    @property
+    def original_sizes(self) -> list[QSize]:
+        """Size of each original thumbnail on screen (empty when none is shown)."""
+        if not self.originals_visible:
+            return []
+        return [label.pixmap().size() for label in self._original_images]
+
+    def show_report(
+        self, report: ComparisonReport, originals: Optional[tuple[np.ndarray, np.ndarray]] = None
+    ) -> None:
+        """Show ``report`` and, when given, the two input photos ("before", "after") as thumbnails.
+
+        Only reduced copies of ``originals`` are kept, never the full photos.
+        """
         self.clear()
         self._report = report
         self._viewer.set_image(report.annotated_image)
+        if originals is not None:
+            for label, pixels in zip(self._original_images, originals):
+                label.setPixmap(thumbnail_pixmap(pixels, ORIGINAL_THUMBNAIL_HEIGHT))
+            self._originals.show()
         kind = BannerKind.INFO if report.has_changes else BannerKind.SUCCESS
         self._headline.show_message(report_text.headline(report), kind)
         self._headline.show()
@@ -129,6 +164,9 @@ class ReportWidget(QWidget):
         self._warnings.clear()
         self._cards.clear()
         self._viewer.set_image(None)
+        for label in self._original_images:
+            label.clear()
+        self._originals.hide()
         self._headline.hide()
         self._camera_note.clear()
         self._camera_note.hide()
@@ -202,6 +240,7 @@ class ReportWidget(QWidget):
         image_layout.setContentsMargins(0, 0, 0, 0)
         image_layout.addWidget(self._viewer, stretch=1)
         image_layout.addLayout(zoom_row)
+        image_layout.addWidget(self._build_originals())
 
         self._headline = Banner()
         font = self._headline.font()
@@ -257,6 +296,36 @@ class ReportWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(splitter)
+
+
+    def _build_originals(self) -> QWidget:
+        """Strip "Fotos originales" with the "before" and "after" thumbnails side by side."""
+        self._originals = QWidget()
+        title = QLabel("Fotos originales")
+        title.setStyleSheet("font-weight:bold;")
+        row = QHBoxLayout()
+        self._original_images: list[QLabel] = []
+        self._original_captions: list[QLabel] = []
+        for caption_text in ORIGINAL_CAPTIONS:
+            image = QLabel()
+            image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            image.setMinimumHeight(ORIGINAL_THUMBNAIL_HEIGHT)
+            image.setStyleSheet(f"background:{theme.IMAGE_BACKGROUND}; border-radius:4px;")
+            caption = QLabel(caption_text)
+            caption.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            caption.setStyleSheet(f"color:{theme.TEXT_MUTED};")
+            column = QVBoxLayout()
+            column.addWidget(image)
+            column.addWidget(caption)
+            row.addLayout(column)
+            self._original_images.append(image)
+            self._original_captions.append(caption)
+        layout = QVBoxLayout(self._originals)
+        layout.setContentsMargins(0, 6, 0, 0)
+        layout.addWidget(title)
+        layout.addLayout(row)
+        self._originals.hide()
+        return self._originals
 
 
 def _object_card(obj: ChangedObject) -> QFrame:

@@ -27,6 +27,7 @@ from config.paths import SAMPLES_DIR
 from config.settings import AppSettings
 from controllers.pipeline_controller import STAGES, PipelineController
 from models.comparison_report import ComparisonReport
+from models.image_data import ImageData
 from models.session_history import SessionHistory
 from services.capture.example_catalog import ExampleEntry, load_examples
 from ui import report_text, theme
@@ -36,9 +37,13 @@ from ui.manual_dialog import ManualDialog
 from ui.image_selection_panel import ImageSelectionPanel
 from ui.image_slot_widget import ImageSlotWidget
 from ui.pipeline_worker import PipelineWorker
+from ui.qt_image import downscale
 from ui.report_widget import ReportWidget
 
 APP_TITLE = "Detección de cambios en escena"
+
+# Longest side of the copies of the photos kept in the session history (about 0.35 MB per pair at 16:9).
+HISTORY_THUMBNAIL_MAX_SIDE = 320
 
 ABOUT_TEXT = (
     "<h3>Detección de cambios en escena</h3>"
@@ -81,6 +86,8 @@ class MainWindow(QMainWindow):
         # One history per window: it lives as long as the session and is never saved (RF-014).
         self._history = SessionHistory()
         self._analyzed_sources: tuple[str, str] = ("", "")
+        # The photos being analyzed, by reference: the panels already hold them, so nothing is copied.
+        self._analyzed_images: Optional[tuple[ImageData, ImageData]] = None
 
         self.setWindowTitle(APP_TITLE)
         self._fit_to_screen()
@@ -153,6 +160,7 @@ class MainWindow(QMainWindow):
         self._progress.setValue(0)
         self._stage.setText(report_text.stage_description(STAGES[0]))
         self._analyzed_sources = (pair[0].image.source, pair[1].image.source)
+        self._analyzed_images = (pair[0].image, pair[1].image)
         worker = PipelineWorker(self._controller, *pair, parent=self)
         worker.progress_updated.connect(self._on_progress)
         worker.report_ready.connect(self._on_report)
@@ -170,6 +178,7 @@ class MainWindow(QMainWindow):
             return
         self._panel.clear()
         self._report.clear()
+        self._analyzed_images = None
         self._error.hide()
         self._set_step(Step.SELECTION)
         self.statusBar().showMessage("Elija la foto de referencia (Antes) y la foto actual (Después).")
@@ -246,15 +255,25 @@ class MainWindow(QMainWindow):
 
     def _on_report(self, report: ComparisonReport) -> None:
         self._progress.setValue(len(STAGES))
+        originals = None
+        if self._analyzed_images is not None:
+            originals = (self._analyzed_images[0].pixels, self._analyzed_images[1].pixels)
         # Only successful comparisons enter the history; a failed one has no report to review.
-        self._history.add(report, *self._analyzed_sources)
-        self._report.show_report(report)
+        # The history keeps reduced copies of the photos, not the full-size ones.
+        history_originals = None if originals is None else tuple(
+            downscale(pixels, max_side=HISTORY_THUMBNAIL_MAX_SIDE) for pixels in originals
+        )
+        self._history.add(report, *self._analyzed_sources, originals=history_originals)
+        self._report.show_report(report, originals=originals)
         self._set_step(Step.REPORT)
         self.statusBar().showMessage(report_text.headline(report))
 
     def _on_error(self, message: str) -> None:
         self._error.show_message(f"No se pudo completar el análisis. {message}", BannerKind.ERROR)
         self._error.show()
+        # A failed analysis has no result: nothing of it, the original photos included, stays on screen.
+        self._report.clear()
+        self._analyzed_images = None
         self._set_step(Step.SELECTION)
         self.statusBar().showMessage("El análisis no se completó.")
 

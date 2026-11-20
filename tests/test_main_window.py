@@ -646,3 +646,93 @@ def test_examples_menu_is_disabled_without_examples(window, monkeypatch):
     assert not menu.isEnabled() and menu.actions() == []
     main.new_analysis()  # Moving through the steps must not re-enable an empty menu.
     assert not menu.isEnabled()
+
+
+# ------------------------------------------------------------ original photos
+
+
+def _photo(width: int, height: int) -> np.ndarray:
+    return np.full((height, width, 3), 120, np.uint8)
+
+
+def test_result_shows_both_original_photos_as_thumbnails(qapp):
+    from ui.report_widget import ORIGINAL_THUMBNAIL_HEIGHT
+
+    widget = ReportWidget()
+    widget.show_report(_report([_changed(ChangeType.DISPLACED)]), originals=(_photo(1920, 1080), _photo(480, 640)))
+
+    assert widget.originals_visible
+    assert widget.original_captions == ["Antes", "Después"]
+    landscape, portrait = widget.original_sizes
+    assert landscape.height() == ORIGINAL_THUMBNAIL_HEIGHT and portrait.height() == ORIGINAL_THUMBNAIL_HEIGHT
+    assert landscape.width() == pytest.approx(ORIGINAL_THUMBNAIL_HEIGHT * 1920 / 1080, abs=1)
+    assert portrait.width() == pytest.approx(ORIGINAL_THUMBNAIL_HEIGHT * 480 / 640, abs=1)
+
+    widget.clear()
+    assert not widget.originals_visible and widget.original_sizes == []
+
+
+def test_small_photos_are_not_enlarged_and_no_strip_without_photos(qapp):
+    widget = ReportWidget()
+    widget.show_report(_report(), originals=(_photo(200, 100), _photo(200, 100)))
+    assert [(s.width(), s.height()) for s in widget.original_sizes] == [(200, 100), (200, 100)]
+
+    widget.show_report(_report())
+    assert not widget.originals_visible
+
+
+def test_window_result_shows_the_analyzed_photos_and_new_analysis_clears_them(window):
+    main = window()
+    _analyze(main)
+    report = main.report_widget
+    assert main.step is Step.REPORT
+    assert report.originals_visible and report.original_captions == ["Antes", "Después"]
+    assert [s.width() for s in report.original_sizes] == [213, 213]  # 640x480 photos at 160 px high
+
+    main.new_analysis()
+    assert not report.originals_visible
+
+
+def test_failed_analysis_shows_no_original_photos(window):
+    main = window(FailingController)
+    _analyze(main)
+    assert main.step is Step.SELECTION
+    assert not main.report_widget.originals_visible
+
+
+def test_history_keeps_reduced_originals_and_shows_them(window):
+    from ui.main_window import HISTORY_THUMBNAIL_MAX_SIDE
+
+    main = window()
+    _analyze(main)
+    entry = main.history.latest
+    assert entry.originals is not None
+    for pixels in entry.originals:
+        assert max(pixels.shape[:2]) <= HISTORY_THUMBNAIL_MAX_SIDE
+        assert pixels.shape[1] / pixels.shape[0] == pytest.approx(640 / 480, rel=0.01)
+
+    dialog = main.history_dialog()
+    assert dialog.report_widget.originals_visible
+    assert dialog.report_widget.original_captions == ["Antes", "Después"]
+    dialog.deleteLater()
+
+
+def test_history_entry_without_originals_hides_the_strip(qapp):
+    from models import SessionHistory
+    from ui.history_dialog import HistoryDialog
+
+    history = SessionHistory()
+    history.add(_report(), "a.png", "b.png")
+    dialog = HistoryDialog(history)
+    assert not dialog.report_widget.originals_visible
+    dialog.deleteLater()
+
+
+def test_downscale_keeps_proportions_and_never_enlarges():
+    from ui.qt_image import downscale
+
+    reduced = downscale(_photo(1920, 1080), max_side=320)
+    assert reduced.shape[:2] == (180, 320)
+    small = _photo(100, 50)
+    assert downscale(small, max_side=320) is small
+    assert downscale(_photo(480, 640), max_height=160).shape[:2] == (160, 120)
