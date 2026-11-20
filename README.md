@@ -329,6 +329,22 @@ python -m scripts.benchmark_pipeline --devices cpu --repetitions 5
 python -m scripts.benchmark_pipeline --pair antes.jpg despues.jpg
 ```
 
+### Mediciones de rendimiento
+
+La evidencia de los requisitos de rendimiento y portabilidad (RR-001, RR-002, RF-009, RF-010 y
+RA-002) se genera con un solo comando:
+
+```bash
+python -m scripts.measure_requirements                  # GPU y CPU (unos 3 minutos)
+python -m scripts.measure_requirements --device cuda    # solo uno de los dos
+```
+
+Mide cada dispositivo en un proceso nuevo (el primer análisis incluye la carga de los modelos),
+simula un equipo sin tarjeta gráfica ocultando la GPU al proceso de CPU, registra el uso de la GPU
+con `nvidia-smi` frente a su consumo en reposo y no usa la red (los pesos deben estar en
+`models/weights/`). Escribe [docs/evidencia/rendimiento.md](docs/evidencia/rendimiento.md) y
+`rendimiento.json`, con el resultado de cada requisito, el entorno y los tiempos por etapa.
+
 ## Uso programático
 
 ```python

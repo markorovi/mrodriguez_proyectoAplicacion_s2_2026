@@ -1,0 +1,953 @@
+{
+  "cuda": {
+    "device_requested": "cuda",
+    "cuda_available": true,
+    "pairs": [
+      {
+        "name": "sintético: desplazamiento",
+        "kind": "sintetico",
+        "files": [
+          "scene_before.png",
+          "scene_after_moved.png"
+        ],
+        "expected": "un desplazamiento de unos 51 cm",
+        "size": [
+          640,
+          480
+        ],
+        "cold": {
+          "total": 9.502998700016178,
+          "stages": {
+            "acquisition": 3.000008291564882e-06,
+            "loading": 7.598352100001648,
+            "depth": 0.7304193000018131,
+            "alignment": 0.06864860000496265,
+            "segmentation": 0.8725784999987809,
+            "comparison": 0.22419690000242554,
+            "rendering": 0.008800299998256378
+          },
+          "includes_loading": true
+        },
+        "depth": [
+          {
+            "input_size": [
+              640,
+              480
+            ],
+            "shape": [
+              480,
+              640
+            ],
+            "finite": true,
+            "min": 1.2327646017074585,
+            "max": 3.8374369144439697
+          },
+          {
+            "input_size": [
+              640,
+              480
+            ],
+            "shape": [
+              480,
+              640
+            ],
+            "finite": true,
+            "min": 1.3032673597335815,
+            "max": 3.527460813522339
+          }
+        ],
+        "warm": {
+          "count": 10,
+          "total": {
+            "mean": 0.3119551899988437,
+            "min": 0.26850269999704324,
+            "max": 0.3965358000132255
+          },
+          "stages": {
+            "acquisition": {
+              "mean": 1.5799989341758191e-06,
+              "min": 1.00000761449337e-06,
+              "max": 3.1999952625483274e-06
+            },
+            "depth": {
+              "mean": 0.049248229998920576,
+              "min": 0.043170399992959574,
+              "max": 0.056742300002952106
+            },
+            "alignment": {
+              "mean": 0.06910245000035502,
+              "min": 0.06121050000365358,
+              "max": 0.08456270000897348
+            },
+            "segmentation": {
+              "mean": 0.1594042300028377,
+              "min": 0.12884910000138916,
+              "max": 0.231231800004025
+            },
+            "comparison": {
+              "mean": 0.027735540000139735,
+              "min": 0.022654999993392266,
+              "max": 0.03817679999337997
+            },
+            "rendering": {
+              "mean": 0.006463159997656476,
+              "min": 0.005646999998134561,
+              "max": 0.0075914999906672165
+            }
+          }
+        },
+        "changes": [
+          "cuadro: DESPLAZAMIENTO (51.6 cm)"
+        ],
+        "warnings": 0
+      },
+      {
+        "name": "sintético: retiro",
+        "kind": "sintetico",
+        "files": [
+          "scene_before.png",
+          "scene_after_removed.png"
+        ],
+        "expected": "un objeto retirado",
+        "size": [
+          640,
+          480
+        ],
+        "cold": {
+          "total": 0.28039679999346845,
+          "stages": {
+            "acquisition": 2.6000052457675338e-06,
+            "depth": 0.0455738000018755,
+            "alignment": 0.062206699993112125,
+            "segmentation": 0.15349379999679513,
+            "comparison": 0.015152799998759292,
+            "rendering": 0.003967099997680634
+          },
+          "includes_loading": false
+        },
+        "depth": [
+          {
+            "input_size": [
+              640,
+              480
+            ],
+            "shape": [
+              480,
+              640
+            ],
+            "finite": true,
+            "min": 1.2327646017074585,
+            "max": 3.8374369144439697
+          },
+          {
+            "input_size": [
+              640,
+              480
+            ],
+            "shape": [
+              480,
+              640
+            ],
+            "finite": true,
+            "min": 1.4660418033599854,
+            "max": 3.567741870880127
+          }
+        ],
+        "warm": {
+          "count": 10,
+          "total": {
+            "mean": 0.2716062300023623,
+            "min": 0.2502525999880163,
+            "max": 0.3010162999853492
+          },
+          "stages": {
+            "acquisition": {
+              "mean": 1.370000245515257e-06,
+              "min": 1.100008375942707e-06,
+              "max": 1.6999983927235007e-06
+            },
+            "depth": {
+              "mean": 0.046653689999948254,
+              "min": 0.0418301000026986,
+              "max": 0.0603873000072781
+            },
+            "alignment": {
+              "mean": 0.059127999997872396,
+              "min": 0.05388989999482874,
+              "max": 0.06881199999770615
+            },
+            "segmentation": {
+              "mean": 0.14746835000114517,
+              "min": 0.13037310000800062,
+              "max": 0.17817829998966772
+            },
+            "comparison": {
+              "mean": 0.01397430000215536,
+              "min": 0.011993300009635277,
+              "max": 0.01789170000120066
+            },
+            "rendering": {
+              "mean": 0.004380520000995603,
+              "min": 0.0036761999945156276,
+              "max": 0.005101799994008616
+            }
+          }
+        },
+        "changes": [
+          "cuadro: RETIRADO / DESAPARICIÓN"
+        ],
+        "warnings": 0
+      },
+      {
+        "name": "sintético: poca luz",
+        "kind": "sintetico",
+        "files": [
+          "scene_before.png",
+          "scene_low_light.png"
+        ],
+        "expected": "sin cambios, con aviso de poca luz",
+        "size": [
+          640,
+          480
+        ],
+        "cold": {
+          "total": 0.27717449999181554,
+          "stages": {
+            "acquisition": 1.6999983927235007e-06,
+            "depth": 0.050036499989801086,
+            "alignment": 0.0605999000108568,
+            "segmentation": 0.15584010000748094,
+            "comparison": 0.010584099989500828,
+            "rendering": 0.00011219999578315765
+          },
+          "includes_loading": false
+        },
+        "depth": [
+          {
+            "input_size": [
+              640,
+              480
+            ],
+            "shape": [
+              480,
+              640
+            ],
+            "finite": true,
+            "min": 1.2327646017074585,
+            "max": 3.8374369144439697
+          },
+          {
+            "input_size": [
+              640,
+              480
+            ],
+            "shape": [
+              480,
+              640
+            ],
+            "finite": true,
+            "min": 1.9041545391082764,
+            "max": 5.471226692199707
+          }
+        ],
+        "warm": {
+          "count": 10,
+          "total": {
+            "mean": 0.2770336000045063,
+            "min": 0.23857949998637196,
+            "max": 0.4090944000345189
+          },
+          "stages": {
+            "acquisition": {
+              "mean": 2.2000036551617087e-06,
+              "min": 9.999930625781417e-07,
+              "max": 8.400005754083395e-06
+            },
+            "depth": {
+              "mean": 0.05103635999839753,
+              "min": 0.04242169999633916,
+              "max": 0.07156810000014957
+            },
+            "alignment": {
+              "mean": 0.05837033000279916,
+              "min": 0.04835539999476168,
+              "max": 0.08765230000426527
+            },
+            "segmentation": {
+              "mean": 0.15566491999925347,
+              "min": 0.13107299999683164,
+              "max": 0.24629290000302717
+            },
+            "comparison": {
+              "mean": 0.011821270000655203,
+              "min": 0.009857000011834316,
+              "max": 0.015223899987176992
+            },
+            "rendering": {
+              "mean": 0.00013851999974576757,
+              "min": 8.410000009462237e-05,
+              "max": 0.0002043999993475154
+            }
+          }
+        },
+        "changes": [],
+        "warnings": 2
+      },
+      {
+        "name": "real",
+        "kind": "real",
+        "size": [
+          1920,
+          1080
+        ],
+        "cold": {
+          "total": 1.0044073000026401,
+          "stages": {
+            "acquisition": 4.4000043999403715e-06,
+            "depth": 0.1547320999961812,
+            "alignment": 0.3796294000057969,
+            "segmentation": 0.26151450000179466,
+            "comparison": 0.1958188999997219,
+            "rendering": 0.012707999994745478
+          },
+          "includes_loading": false
+        },
+        "warm": {
+          "count": 3,
+          "total": {
+            "mean": 0.805213166657874,
+            "min": 0.7914806999906432,
+            "max": 0.8153971999854548
+          },
+          "stages": {
+            "acquisition": {
+              "mean": 3.2666721381247044e-06,
+              "min": 2.5000044843181968e-06,
+              "max": 4.3000036384910345e-06
+            },
+            "depth": {
+              "mean": 0.09485846666211728,
+              "min": 0.08908409999276046,
+              "max": 0.10077259999525268
+            },
+            "alignment": {
+              "mean": 0.31539613333976985,
+              "min": 0.3032021000108216,
+              "max": 0.3285047000099439
+            },
+            "segmentation": {
+              "mean": 0.20956879999721423,
+              "min": 0.20056949999707285,
+              "max": 0.22227569999813568
+            },
+            "comparison": {
+              "mean": 0.17353443332831375,
+              "min": 0.1718401999969501,
+              "max": 0.1756223999982467
+            },
+            "rendering": {
+              "mean": 0.011852066658320837,
+              "min": 0.009684899996500462,
+              "max": 0.01509379998606164
+            }
+          }
+        },
+        "warnings": 0
+      },
+      {
+        "name": "real_2",
+        "kind": "real",
+        "size": [
+          1920,
+          1080
+        ],
+        "cold": {
+          "total": 0.9286410000058822,
+          "stages": {
+            "acquisition": 1.8999999156221747e-06,
+            "depth": 0.09506190000684,
+            "alignment": 0.3190436000004411,
+            "segmentation": 0.2329009999957634,
+            "comparison": 0.2702148000098532,
+            "rendering": 0.011417799993068911
+          },
+          "includes_loading": false
+        },
+        "warm": {
+          "count": 3,
+          "total": {
+            "mean": 0.8728355333344856,
+            "min": 0.8672998999827541,
+            "max": 0.8820978000294417
+          },
+          "stages": {
+            "acquisition": {
+              "mean": 1.7666704176614683e-06,
+              "min": 1.500011421740055e-06,
+              "max": 2.2000021999701858e-06
+            },
+            "depth": {
+              "mean": 0.08271753333489566,
+              "min": 0.07893600000534207,
+              "max": 0.08463250000204425
+            },
+            "alignment": {
+              "mean": 0.2979480999977871,
+              "min": 0.2977056999952765,
+              "max": 0.29815799999050796
+            },
+            "segmentation": {
+              "mean": 0.20900693333533127,
+              "min": 0.20501779999176506,
+              "max": 0.21671630001219455
+            },
+            "comparison": {
+              "mean": 0.27305009999933344,
+              "min": 0.2707291999977315,
+              "max": 0.27645239999401383
+            },
+            "rendering": {
+              "mean": 0.01011109999672044,
+              "min": 0.009213099998305552,
+              "max": 0.010846599994692951
+            }
+          }
+        },
+        "warnings": 0
+      },
+      {
+        "name": "real_3",
+        "kind": "real",
+        "size": [
+          1920,
+          1080
+        ],
+        "cold": {
+          "total": 0.9414483000145992,
+          "stages": {
+            "acquisition": 4.7000066842883825e-06,
+            "depth": 0.08702150000317488,
+            "alignment": 0.2864663000073051,
+            "segmentation": 0.23506849999830592,
+            "comparison": 0.32047989999409765,
+            "rendering": 0.012407400005031377
+          },
+          "includes_loading": false
+        },
+        "warm": {
+          "count": 3,
+          "total": {
+            "mean": 0.9421266000038789,
+            "min": 0.8974031999969156,
+            "max": 1.02509320001991
+          },
+          "stages": {
+            "acquisition": {
+              "mean": 2.833330654539168e-06,
+              "min": 1.3999961083754897e-06,
+              "max": 3.7999998312443495e-06
+            },
+            "depth": {
+              "mean": 0.08185103333380539,
+              "min": 0.07889160000195261,
+              "max": 0.08513180000591092
+            },
+            "alignment": {
+              "mean": 0.31076320000283886,
+              "min": 0.2943907000008039,
+              "max": 0.34021670000220183
+            },
+            "segmentation": {
+              "mean": 0.21956913333269767,
+              "min": 0.1999630999926012,
+              "max": 0.25408579999930225
+            },
+            "comparison": {
+              "mean": 0.3206471666683986,
+              "min": 0.3076472999964608,
+              "max": 0.3366556000109995
+            },
+            "rendering": {
+              "mean": 0.00929323333548382,
+              "min": 0.008999500001664273,
+              "max": 0.009706500000902452
+            }
+          }
+        },
+        "warnings": 0
+      }
+    ],
+    "environment": {
+      "gpu": "NVIDIA GeForce RTX 3070",
+      "driver": "610.88",
+      "torch": "2.14.1+cu130",
+      "cuda": "13.0",
+      "python": "3.13.7",
+      "os": "Windows-11-10.0.26200-SP0",
+      "cpu": "Intel64 Family 6 Model 151 Stepping 5, GenuineIntel"
+    },
+    "resolved_devices": {
+      "depth": "NVIDIA GeForce RTX 3070",
+      "comparison": "NVIDIA GeForce RTX 3070",
+      "segmentation": "NVIDIA GeForce RTX 3070"
+    },
+    "cpu_notice": "",
+    "cpu_notice_in_warnings": false,
+    "gpu": {
+      "smi_available": true,
+      "baseline": {
+        "util_median": 22.0,
+        "mem_median_mib": 1357.0,
+        "samples": 5
+      },
+      "samples": 108,
+      "max_util": 53.0,
+      "max_mem_mib": 2952.0,
+      "mem_increase_mib": 1595.0,
+      "torch_max_allocated_mib": 871.3896484375
+    },
+    "cold_note": "solo el primer análisis del proceso incluye la carga de los modelos; los «frío» de los pares siguientes son el primer análisis de cada par con los modelos ya en memoria."
+  },
+  "cpu": {
+    "device_requested": "cpu",
+    "cuda_available": false,
+    "pairs": [
+      {
+        "name": "sintético: desplazamiento",
+        "kind": "sintetico",
+        "files": [
+          "scene_before.png",
+          "scene_after_moved.png"
+        ],
+        "expected": "un desplazamiento de unos 51 cm",
+        "size": [
+          640,
+          480
+        ],
+        "cold": {
+          "total": 12.550311099999817,
+          "stages": {
+            "acquisition": 3.7999998312443495e-06,
+            "loading": 5.981347100008861,
+            "depth": 2.2378545999963535,
+            "alignment": 0.094938700000057,
+            "segmentation": 4.1175562999997055,
+            "comparison": 0.11105459999816958,
+            "rendering": 0.007555999996839091
+          },
+          "includes_loading": true
+        },
+        "depth": [
+          {
+            "input_size": [
+              640,
+              480
+            ],
+            "shape": [
+              480,
+              640
+            ],
+            "finite": true,
+            "min": 1.2331279516220093,
+            "max": 3.8372676372528076
+          },
+          {
+            "input_size": [
+              640,
+              480
+            ],
+            "shape": [
+              480,
+              640
+            ],
+            "finite": true,
+            "min": 1.3018124103546143,
+            "max": 3.5290675163269043
+          }
+        ],
+        "warm": {
+          "count": 3,
+          "total": {
+            "mean": 6.324558299985559,
+            "min": 5.9708182999747805,
+            "max": 6.853610099977232
+          },
+          "stages": {
+            "acquisition": {
+              "mean": 1.400000959013899e-06,
+              "min": 1.100008375942707e-06,
+              "max": 1.8999999156221747e-06
+            },
+            "depth": {
+              "mean": 1.7617982666609653,
+              "min": 1.7162162000022363,
+              "max": 1.8507507999893278
+            },
+            "alignment": {
+              "mean": 0.061530200002986625,
+              "min": 0.05609510000795126,
+              "max": 0.06768549999105744
+            },
+            "segmentation": {
+              "mean": 4.40646233332518,
+              "min": 4.0881937999947695,
+              "max": 4.848046899991459
+            },
+            "comparison": {
+              "mean": 0.08873853332867536,
+              "min": 0.08801999999559484,
+              "max": 0.09008609999727923
+            },
+            "rendering": {
+              "mean": 0.006027566666792457,
+              "min": 0.00567830000363756,
+              "max": 0.006423200000426732
+            }
+          }
+        },
+        "changes": [
+          "cuadro: DESPLAZAMIENTO (51.5 cm)"
+        ],
+        "warnings": 1
+      },
+      {
+        "name": "sintético: retiro",
+        "kind": "sintetico",
+        "files": [
+          "scene_before.png",
+          "scene_after_removed.png"
+        ],
+        "expected": "un objeto retirado",
+        "size": [
+          640,
+          480
+        ],
+        "cold": {
+          "total": 5.906262799995602,
+          "stages": {
+            "acquisition": 2.6999914553016424e-06,
+            "depth": 1.7612686000065878,
+            "alignment": 0.05786709999665618,
+            "segmentation": 4.001687500000116,
+            "comparison": 0.08146699999633711,
+            "rendering": 0.0039699000044493005
+          },
+          "includes_loading": false
+        },
+        "depth": [
+          {
+            "input_size": [
+              640,
+              480
+            ],
+            "shape": [
+              480,
+              640
+            ],
+            "finite": true,
+            "min": 1.2331279516220093,
+            "max": 3.8372676372528076
+          },
+          {
+            "input_size": [
+              640,
+              480
+            ],
+            "shape": [
+              480,
+              640
+            ],
+            "finite": true,
+            "min": 1.4646600484848022,
+            "max": 3.5724329948425293
+          }
+        ],
+        "warm": {
+          "count": 3,
+          "total": {
+            "mean": 6.177858333331339,
+            "min": 5.972809099999722,
+            "max": 6.319639699999243
+          },
+          "stages": {
+            "acquisition": {
+              "mean": 1.2333330232650042e-06,
+              "min": 1.0999938240274787e-06,
+              "max": 1.3999961083754897e-06
+            },
+            "depth": {
+              "mean": 1.8057708333362825,
+              "min": 1.7307799999980489,
+              "max": 1.9112128000124358
+            },
+            "alignment": {
+              "mean": 0.06426066666123613,
+              "min": 0.057841899993945844,
+              "max": 0.07365359998948406
+            },
+            "segmentation": {
+              "mean": 4.179684033331189,
+              "min": 4.031732699993881,
+              "max": 4.445547199997236
+            },
+            "comparison": {
+              "mean": 0.12328643333360863,
+              "min": 0.07713930000318214,
+              "max": 0.20502049999777228
+            },
+            "rendering": {
+              "mean": 0.004855133335998592,
+              "min": 0.004402400008984841,
+              "max": 0.00527739999233745
+            }
+          }
+        },
+        "changes": [
+          "cuadro: RETIRADO / DESAPARICIÓN"
+        ],
+        "warnings": 1
+      },
+      {
+        "name": "sintético: poca luz",
+        "kind": "sintetico",
+        "files": [
+          "scene_before.png",
+          "scene_low_light.png"
+        ],
+        "expected": "sin cambios, con aviso de poca luz",
+        "size": [
+          640,
+          480
+        ],
+        "cold": {
+          "total": 7.349293999985093,
+          "stages": {
+            "acquisition": 2.4999899324029684e-06,
+            "depth": 2.2202487000031397,
+            "alignment": 0.06906169999274425,
+            "segmentation": 4.98419780000404,
+            "comparison": 0.07566289999522269,
+            "rendering": 0.00012040000001434237
+          },
+          "includes_loading": false
+        },
+        "depth": [
+          {
+            "input_size": [
+              640,
+              480
+            ],
+            "shape": [
+              480,
+              640
+            ],
+            "finite": true,
+            "min": 1.2331279516220093,
+            "max": 3.8372676372528076
+          },
+          {
+            "input_size": [
+              640,
+              480
+            ],
+            "shape": [
+              480,
+              640
+            ],
+            "finite": true,
+            "min": 1.9025704860687256,
+            "max": 5.473797798156738
+          }
+        ],
+        "warm": {
+          "count": 3,
+          "total": {
+            "mean": 7.21313726666267,
+            "min": 6.048087199989823,
+            "max": 8.252085999993142
+          },
+          "stages": {
+            "acquisition": {
+              "mean": 1.6333312184239428e-06,
+              "min": 1.4999968698248267e-06,
+              "max": 1.8999999156221747e-06
+            },
+            "depth": {
+              "mean": 2.2046876666669655,
+              "min": 1.8932970000023488,
+              "max": 2.6355297999980394
+            },
+            "alignment": {
+              "mean": 0.06445200000113498,
+              "min": 0.05598039999313187,
+              "max": 0.07708010000351351
+            },
+            "segmentation": {
+              "mean": 4.852622466671164,
+              "min": 4.014196100004483,
+              "max": 6.0054481999977725
+            },
+            "comparison": {
+              "mean": 0.09120413333099957,
+              "min": 0.08444459999736864,
+              "max": 0.10089909999805968
+            },
+            "rendering": {
+              "mean": 0.0001693666611875718,
+              "min": 0.00013499999477062374,
+              "max": 0.00020549999317154288
+            }
+          }
+        },
+        "changes": [],
+        "warnings": 3
+      },
+      {
+        "name": "real",
+        "kind": "real",
+        "size": [
+          1920,
+          1080
+        ],
+        "cold": {
+          "total": 9.242540299994289,
+          "stages": {
+            "acquisition": 2.4999899324029684e-06,
+            "depth": 2.8710977000009734,
+            "alignment": 0.33974310000485275,
+            "segmentation": 5.404670100004296,
+            "comparison": 0.6161336999939522,
+            "rendering": 0.010893200000282377
+          },
+          "includes_loading": false
+        },
+        "warm": {
+          "count": 0,
+          "total": null,
+          "stages": {}
+        },
+        "warnings": 1
+      },
+      {
+        "name": "real_2",
+        "kind": "real",
+        "size": [
+          1920,
+          1080
+        ],
+        "cold": {
+          "total": 8.885060100001283,
+          "stages": {
+            "acquisition": 2.3000029614195228e-06,
+            "depth": 2.8828492000029655,
+            "alignment": 0.2954577999917092,
+            "segmentation": 4.963689500000328,
+            "comparison": 0.7316294000047492,
+            "rendering": 0.011431899998569861
+          },
+          "includes_loading": false
+        },
+        "warm": {
+          "count": 0,
+          "total": null,
+          "stages": {}
+        },
+        "warnings": 1
+      },
+      {
+        "name": "real_3",
+        "kind": "real",
+        "size": [
+          1920,
+          1080
+        ],
+        "cold": {
+          "total": 10.235273599988432,
+          "stages": {
+            "acquisition": 2.0000006770715117e-06,
+            "depth": 3.3385840999981156,
+            "alignment": 0.3610791999963112,
+            "segmentation": 5.784137299997383,
+            "comparison": 0.7411199000052875,
+            "rendering": 0.01035109999065753
+          },
+          "includes_loading": false
+        },
+        "warm": {
+          "count": 0,
+          "total": null,
+          "stages": {}
+        },
+        "warnings": 1
+      }
+    ],
+    "environment": {
+      "gpu": null,
+      "driver": "610.88",
+      "torch": "2.14.1+cu130",
+      "cuda": "13.0",
+      "python": "3.13.7",
+      "os": "Windows-11-10.0.26200-SP0",
+      "cpu": "Intel64 Family 6 Model 151 Stepping 5, GenuineIntel"
+    },
+    "resolved_devices": {
+      "depth": "CPU",
+      "comparison": "CPU",
+      "segmentation": "CPU"
+    },
+    "cpu_notice": "No se detectó una tarjeta gráfica compatible; el análisis se ejecutará en el procesador y podría tardar más de lo habitual.",
+    "cpu_notice_in_warnings": true,
+    "cold_note": "solo el primer análisis del proceso incluye la carga de los modelos; los «frío» de los pares siguientes son el primer análisis de cada par con los modelos ya en memoria."
+  },
+  "environment": {
+    "driver": "610.88",
+    "torch": "2.14.1+cu130",
+    "cuda": "13.0",
+    "python": "3.13.7",
+    "os": "Windows-11-10.0.26200-SP0",
+    "cpu": "Intel64 Family 6 Model 151 Stepping 5, GenuineIntel",
+    "gpu": "NVIDIA GeForce RTX 3070"
+  },
+  "meta": {
+    "date": "2026-11-20 14:06",
+    "commit": "0af944c",
+    "dirty": true
+  },
+  "observations": [
+    "GPU, sintético: desplazamiento: se esperaba un desplazamiento de unos 51 cm; se obtuvo: cuadro: DESPLAZAMIENTO (51.6 cm).",
+    "GPU, sintético: retiro: se esperaba un objeto retirado; se obtuvo: cuadro: RETIRADO / DESAPARICIÓN.",
+    "GPU, sintético: poca luz: se esperaba sin cambios, con aviso de poca luz; se obtuvo: sin cambios.",
+    "GPU: solo el primer análisis del proceso incluye la carga de los modelos; los «frío» de los pares siguientes son el primer análisis de cada par con los modelos ya en memoria.",
+    "CPU, sintético: desplazamiento: se esperaba un desplazamiento de unos 51 cm; se obtuvo: cuadro: DESPLAZAMIENTO (51.5 cm).",
+    "CPU, sintético: retiro: se esperaba un objeto retirado; se obtuvo: cuadro: RETIRADO / DESAPARICIÓN.",
+    "CPU, sintético: poca luz: se esperaba sin cambios, con aviso de poca luz; se obtuvo: sin cambios.",
+    "CPU: solo el primer análisis del proceso incluye la carga de los modelos; los «frío» de los pares siguientes son el primer análisis de cada par con los modelos ya en memoria."
+  ],
+  "requirements": [
+    {
+      "requirement": "RR-001",
+      "status": "CUMPLE",
+      "evidence": "Máximo en frío 9.50 s (incluye la carga de modelos) y en caliente 0.41 s, frente al límite de 15 s (3 escenas sintéticas 640x480)."
+    },
+    {
+      "requirement": "RR-002",
+      "status": "CUMPLE",
+      "evidence": "12 mapas de profundidad de entradas 640x480: forma 480x640, valores finitos y positivos, entre 1.23 m y 5.47 m."
+    },
+    {
+      "requirement": "RF-009",
+      "status": "CUMPLE",
+      "evidence": "nvidia-smi: memoria de la GPU de 1357 MiB en reposo a 2952 MiB durante el análisis (+1595 MiB; umbral 100 MiB); utilización máxima 53 % (reposo 22 %); PyTorch reservó como máximo 871 MiB."
+    },
+    {
+      "requirement": "RF-010",
+      "status": "CUMPLE",
+      "evidence": "GPU oculta al proceso: sí; dispositivo resuelto: CPU; escenas sintéticas completadas: sí; aviso en las advertencias del reporte: sí («No se detectó una tarjeta gráfica compatible; el análisis se ejecutará en el procesador y podría tardar más de lo habitual.»)."
+    },
+    {
+      "requirement": "RA-002",
+      "status": "CUMPLE",
+      "evidence": "Las 3 escenas sintéticas se completaron en GPU y en el entorno sin GPU, en procesos separados."
+    }
+  ]
+}
