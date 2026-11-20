@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QProgressBar,
     QPushButton,
@@ -27,6 +28,7 @@ from config.settings import AppSettings
 from controllers.pipeline_controller import STAGES, PipelineController
 from models.comparison_report import ComparisonReport
 from models.session_history import SessionHistory
+from services.capture.example_catalog import ExampleEntry, load_examples
 from ui import report_text, theme
 from ui.banner import Banner, BannerKind
 from ui.history_dialog import HistoryDialog
@@ -183,6 +185,14 @@ class MainWindow(QMainWindow):
         else:
             self._next_slot().load_file(paths[0])
 
+    def load_example(self, entry: ExampleEntry) -> None:
+        """Load an example pair as "before" and "after", exactly like choosing both files by hand."""
+        self.load_files([entry.before_path, entry.after_path])
+
+    @property
+    def example_actions(self) -> list[QAction]:
+        return list(self._example_actions)
+
     def capture_photo(self) -> None:
         """Capture with the selected camera into the next empty panel."""
         if self.is_analyzing:
@@ -262,6 +272,8 @@ class MainWindow(QMainWindow):
         busy = step is Step.ANALYZING
         for action in (self._new_action, self._load_action, self._capture_action):
             action.setEnabled(not busy)
+        # Loading an example is one more way of loading photos, so it follows the same rule.
+        self._examples_menu.setEnabled(bool(self._example_actions) and not busy)
         self._export_action.setEnabled(step is Step.REPORT)
         self._save_image_action.setEnabled(step is Step.REPORT)
         # Enabled even with an empty history, so the user is told there is nothing yet.
@@ -359,9 +371,10 @@ class MainWindow(QMainWindow):
         quit_action.triggered.connect(self.close)
 
         file_menu = self.menuBar().addMenu("&Archivo")
+        file_menu.addAction(self._new_action)
+        file_menu.addAction(self._load_action)
+        self._build_examples_menu(file_menu)
         for action in (
-            self._new_action,
-            self._load_action,
             self._capture_action,
             self._save_image_action,
             self._export_action,
@@ -389,6 +402,22 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self._manual_action)
         toolbar.addAction(about_action)
         self.addToolBar(toolbar)
+
+    def _build_examples_menu(self, file_menu: QMenu) -> None:
+        """Submenu with one action per example pair of the manifest, in its order."""
+        catalog = load_examples()
+        self._examples_menu = file_menu.addMenu("Cargar ejemplo")
+        self._example_actions: list[QAction] = []
+        for entry in catalog.entries:
+            action = QAction(entry.title, self)
+            action.setToolTip(entry.description)
+            action.setStatusTip(entry.description)
+            action.triggered.connect(lambda _checked=False, entry=entry: self.load_example(entry))
+            self._examples_menu.addAction(action)
+            self._example_actions.append(action)
+        if not self._example_actions:
+            self._examples_menu.setTitle("Cargar ejemplo (no hay ejemplos disponibles)")
+            self._examples_menu.setEnabled(False)
 
     def _build_pages(self) -> None:
         self._pages = QStackedWidget()

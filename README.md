@@ -93,7 +93,8 @@ Interfaz de usuario final (ACT-09) y verificación de escena interior (RF-012) c
 | Análisis completo en CPU (RF-010) | Medido: 6.0 s (640x480) y 9.0 s (1920x1080) por par con los modelos cargados; mismos cambios que en GPU |
 | Historial de comparaciones de la sesión (RF-014) | Completado: lista de los análisis de la sesión, del más reciente al más antiguo, con el reporte de cada uno (en memoria, máximo 20) |
 | Manual de usuario integrado (RIS-001 y RIS-003): pautas para tomar las fotos, requisitos de las imágenes, lectura del resultado y avisos frecuentes | Completado |
-| Pruebas | 314 unitarias + 20 de integración |
+| Ejemplos precargados (RIS-002): escenas de prueba y fotos reales sin metadatos, en Archivo > Cargar ejemplo | Completado |
+| Pruebas | 331 unitarias + 20 de integración |
 
 ### Rendimiento medido
 
@@ -235,6 +236,28 @@ antiguo, y muestra el reporte completo del que se elija, que también se puede e
 ahí. Solo guarda los análisis que terminaron con un resultado, conserva como máximo los 20
 últimos y se pierde al cerrar la aplicación, porque reside en memoria. No está disponible
 mientras se analiza un par.
+
+### Ejemplos precargados
+
+**Archivo > Cargar ejemplo** carga con un clic un par de fotos "Antes" y "Después" en los paneles,
+sin buscar archivos; el análisis se inicia, como siempre, con "Analizar diferencias". Sirve para
+demostrar y verificar la aplicación sin fotos propias. Los ejemplos se declaran en
+[data/samples/examples.json](data/samples/examples.json) y hoy son:
+
+- **Escenas de prueba** generadas por computadora (640x480): una caja desplazada, una caja
+  retirada y la misma habitación con poca luz (muestra el aviso de baja iluminación).
+- **Fotos reales** de un espacio interior tomadas por el autor del proyecto (tres pares de
+  1920x1080, `ejemplo_01_a.jpg` a `ejemplo_03_b.jpg`), versionadas sin metadatos: se les quitaron
+  los datos EXIF, incluida la ubicación GPS que traían los originales.
+
+Para agregar un par, copie las dos fotos en `data/samples/` y agregue una entrada al manifiesto
+con `id` (único), `title`, `description`, `before` y `after` (solo el nombre del archivo, `.png`,
+`.jpg` o `.jpeg`). Quite antes los metadatos de las fotos, no incluya personas ni datos personales
+y no use nombres que empiecen por `real_` (ese prefijo lo reservan las pruebas para los pares de
+validación). Las entradas inválidas se omiten sin impedir que la aplicación arranque.
+
+Los análisis necesitan los pesos de los modelos en la caché local (`models/weights/`): si no
+están, se descargan una vez en el primer análisis; después la demostración funciona sin conexión.
 
 ### Paneles de selección de imágenes
 
@@ -473,12 +496,10 @@ calibre la cámara con la que realmente toma las fotos que analiza.
 
 ## Próximos pasos
 
-1. **Imágenes de ejemplo precargadas (RIS-002)**: cargar los pares de muestra desde la
-   aplicación, sin buscar los archivos.
-2. **Escena interior**: prueba de integración con fotos de exterior y calibración del umbral del
+1. **Escena interior**: prueba de integración con fotos de exterior y calibración del umbral del
    25 % con casos límite (habitaciones con ventanales, balcones, patios techados).
-3. **Validación con más fotos reales**: calibrar con el tablero la cámara que toma las fotos,
+2. **Validación con más fotos reales**: calibrar con el tablero la cámara que toma las fotos,
    y más pares (objetos retirados, varios cambios, cámara en mano) con distancias medidas con
    cinta, para cuantificar el error de cada fuente de parámetros.
-4. **Captura desde la cámara en segundo plano**: hoy se ejecuta en el hilo de la interfaz y la
+3. **Captura desde la cámara en segundo plano**: hoy se ejecuta en el hilo de la interfaz y la
    ventana puede pausarse mientras la cámara se estabiliza.

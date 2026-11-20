@@ -6,7 +6,7 @@ import re
 
 import pytest
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QLabel, QPushButton
+from PySide6.QtWidgets import QLabel, QMenu, QPushButton
 
 from config import AppSettings, DevicePreference, ImageSettings, SegmentationSettings
 from controllers import PipelineController
@@ -143,3 +143,10 @@ def test_dialog_lists_the_sections_and_moves_between_them(qapp):
     with pytest.raises(ValueError):
         dialog.show_section("no-existe")
     dialog.deleteLater()
+
+
+def test_manual_mentions_the_examples_menu_that_exists_in_the_window(real_window):
+    first_steps = _text((_section(build_manual(), "Primeros pasos"),))
+    assert f"«{manual_text.EXAMPLES_MENU}»" in first_steps
+    menu_titles = {menu.title() for menu in real_window.menuBar().findChildren(QMenu)}
+    assert manual_text.EXAMPLES_MENU in menu_titles

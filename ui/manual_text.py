@@ -27,6 +27,7 @@ LOAD_FILE_BUTTON = "Cargar archivo..."
 CAPTURE_BUTTON = "Capturar"
 CAMERA_LABEL = "Cámara:"
 ANALYZE_BUTTON = "Analizar diferencias"
+EXAMPLES_MENU = "Cargar ejemplo"
 ACTION_SHORTCUTS: dict[str, Optional[str]] = {
     "Nuevo análisis": "Ctrl+N",
     "Cargar fotos...": "Ctrl+O",
@@ -107,7 +108,11 @@ def _first_steps() -> ManualSection:
     return ManualSection(
         anchor="primeros-pasos",
         title="Primeros pasos",
-        paragraphs=("Un análisis se hace en tres pasos:",),
+        paragraphs=(
+            f"Para probar la aplicación sin fotos propias, abra el menú Archivo y elija «{EXAMPLES_MENU}»: "
+            "carga con un clic un par de fotos de ejemplo, «Antes» y «Después», listo para analizar.",
+            "Un análisis se hace en tres pasos:",
+        ),
         bullets=(
             f"Elija las dos fotos. En el panel «Antes» pulse «{LOAD_FILE_BUTTON}» para abrir una foto "
             f"guardada, o «{CAPTURE_BUTTON}» para tomarla con la cámara indicada en «{CAMERA_LABEL}». "

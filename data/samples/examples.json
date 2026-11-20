@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "examples": [
+    {
+      "id": "sintetico_desplazamiento",
+      "title": "Escena de prueba: caja desplazada",
+      "description": "Habitación generada por computadora en la que una caja cambia de lugar entre las dos fotos.",
+      "before": "scene_before.png",
+      "after": "scene_after_moved.png"
+    },
+    {
+      "id": "sintetico_retiro",
+      "title": "Escena de prueba: caja retirada",
+      "description": "La misma habitación generada por computadora, en la que la caja ya no está en la segunda foto.",
+      "before": "scene_before.png",
+      "after": "scene_after_removed.png"
+    },
+    {
+      "id": "sintetico_poca_luz",
+      "title": "Escena de prueba: poca luz",
+      "description": "La misma habitación sin cambios, con la segunda foto muy oscura: muestra el aviso de poca iluminación.",
+      "before": "scene_before.png",
+      "after": "scene_low_light.png"
+    },
+    {
+      "id": "fotos_reales_1",
+      "title": "Fotos reales: par 1",
+      "description": "Par de fotos reales de un espacio interior, tomadas por el autor del proyecto.",
+      "before": "ejemplo_01_a.jpg",
+      "after": "ejemplo_01_b.jpg"
+    },
+    {
+      "id": "fotos_reales_2",
+      "title": "Fotos reales: par 2",
+      "description": "Par de fotos reales de un espacio interior, tomadas por el autor del proyecto.",
+      "before": "ejemplo_02_a.jpg",
+      "after": "ejemplo_02_b.jpg"
+    },
+    {
+      "id": "fotos_reales_3",
+      "title": "Fotos reales: par 3",
+      "description": "Par de fotos reales de un espacio interior, tomadas por el autor del proyecto.",
+      "before": "ejemplo_03_a.jpg",
+      "after": "ejemplo_03_b.jpg"
+    }
+  ]
+}

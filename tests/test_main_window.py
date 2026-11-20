@@ -591,3 +591,58 @@ def test_no_two_actions_share_a_shortcut(window):
         action.shortcut().toString() for action in window().findChildren(QAction) if not action.shortcut().isEmpty()
     ]
     assert len(shortcuts) == len(set(shortcuts)), shortcuts
+
+
+# --------------------------------------------------------------- example pairs
+
+
+def _examples_menu(main: MainWindow) -> QMenu:
+    file_menu = next(m for m in main.menuBar().findChildren(QMenu) if m.title() == "&Archivo")
+    return next(a.menu() for a in file_menu.actions() if a.menu() is not None)
+
+
+def test_examples_menu_lists_every_example_of_the_manifest(window):
+    from services.capture.example_catalog import load_examples
+
+    main = window()
+    menu = _examples_menu(main)
+    entries = load_examples().entries
+    assert menu.title() == "Cargar ejemplo" and menu.isEnabled()
+    assert [a.text() for a in menu.actions()] == [entry.title for entry in entries]
+    assert [a.statusTip() for a in menu.actions()] == [entry.description for entry in entries]
+
+
+def test_choosing_an_example_loads_both_panels_without_analyzing(window):
+    from services.capture.example_catalog import load_examples
+
+    main = window()
+    first = load_examples().entries[0]
+    _examples_menu(main).actions()[0].trigger()
+
+    panel = main.selection_panel
+    assert panel.before_slot.acquired.image.source == str(first.before_path)
+    assert panel.after_slot.acquired.image.source == str(first.after_path)
+    assert main.step is Step.SELECTION and main.can_analyze
+    assert main.history.is_empty  # Nothing was analyzed.
+
+
+def test_examples_menu_follows_the_loading_rules_during_an_analysis(window):
+    main = window()
+    menu = _examples_menu(main)
+    main.load_files([BEFORE, MOVED])
+    main.start_analysis()
+    assert not menu.isEnabled()
+    _wait_for(lambda: main.step is not Step.ANALYZING)
+    assert menu.isEnabled()
+
+
+def test_examples_menu_is_disabled_without_examples(window, monkeypatch):
+    from services.capture.example_catalog import ExampleCatalog
+
+    monkeypatch.setattr("ui.main_window.load_examples", lambda: ExampleCatalog(skipped=("sin manifiesto",)))
+    main = window()
+    menu = _examples_menu(main)
+    assert menu.title() == "Cargar ejemplo (no hay ejemplos disponibles)"
+    assert not menu.isEnabled() and menu.actions() == []
+    main.new_analysis()  # Moving through the steps must not re-enable an empty menu.
+    assert not menu.isEnabled()
