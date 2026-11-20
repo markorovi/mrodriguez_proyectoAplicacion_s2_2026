@@ -7,8 +7,6 @@ from pathlib import Path
 from time import perf_counter
 from typing import Callable, Iterator, Optional, Union
 
-import numpy as np
-
 from config.settings import AppSettings
 from models.acquired_image import AcquiredImage
 from models.alignment import AlignmentResult
@@ -184,7 +182,7 @@ class PipelineController:
         with timed("segmentation"):
             segmentation_before = self._segment(before.image)
             segmentation_after = self._segment(aligned.image)
-            self._check_indoor(segmentation_before, segmentation_after, aligned.valid_mask)
+            self._check_indoor(segmentation_before, after.image)
 
         with timed("comparison"):
             camera = resolve_intrinsics(before.image, self._settings.camera, self._settings.camera_estimation)
@@ -237,28 +235,24 @@ class PipelineController:
     def _segment(self, image: ImageData) -> Optional[SegmentationMask]:
         return self._segmenter.segment(image) if self._segmenter is not None else None
 
-    def _check_indoor(
-        self,
-        segmentation_before: Optional[SegmentationMask],
-        segmentation_after: Optional[SegmentationMask],
-        overlap: np.ndarray,
-    ) -> None:
+    def _check_indoor(self, segmentation_before: Optional[SegmentationMask], after_photo: ImageData) -> None:
         """Raise :class:`NonIndoorSceneError` naming each photo that shows an outdoor scene.
 
-        Needs the segmentation, so it is skipped when segmentation is
-        disabled. The aligned "after" view is judged only where it covers
-        "before": the empty borders left by the alignment are not part of it.
+        Both photos are judged whole and as taken. The "after" photo gets a
+        segmentation of its own instead of reusing the one of its aligned
+        view: a wrong alignment between unrelated photos (a room and a street)
+        can warp the outdoor view into something that looks like a room, and
+        the aligned view would then let the outdoor photo in. The aligned
+        segmentation still feeds the comparison and the object names. Needs
+        the segmentation, so it is skipped when segmentation is disabled.
         """
-        if not self._settings.segmentation.check_indoor_scene:
+        if not self._settings.segmentation.check_indoor_scene or self._segmenter is None:
             return
         outdoor = {}
-        for name, mask, region in (
-            ("Antes", segmentation_before, None),
-            ("Después", segmentation_after, overlap),
-        ):
+        for name, mask in (("Antes", segmentation_before), ("Después", self._segment(after_photo))):
             if mask is None:
                 continue
-            is_indoor, percent = self._labeler.validate_indoor_scene(mask, region)
+            is_indoor, percent = self._labeler.validate_indoor_scene(mask)
             if not is_indoor:
                 outdoor[name] = percent
         if outdoor:

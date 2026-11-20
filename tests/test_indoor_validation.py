@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 
 import numpy as np
 import pytest
@@ -12,6 +13,8 @@ from config import AppSettings, DevicePreference, SegmentationSettings
 from config.paths import SAMPLES_DIR
 from controllers import PipelineController
 from models import ImageData, NonIndoorSceneError, SceneDiffError, SegmentationMask
+from models.alignment import AlignmentReport
+from services.alignment import SpatialAlignmentService
 from services.inference import DeviceManager
 from services.segmentation import (
     ADE20K_OUTDOOR_CLASSES,
@@ -129,7 +132,7 @@ def _outdoor(image: ImageData, sky_rows: int = 200) -> ImageData:
     return ImageData(pixels, "outdoor.png")
 
 
-def _controller(settings: AppSettings | None = None, comparator=None) -> PipelineController:
+def _controller(settings: AppSettings | None = None, comparator=None, aligner=None) -> PipelineController:
     settings = settings or AppSettings()
     segmenter = SegFormerSegmenter(
         settings.segmentation,
@@ -137,7 +140,11 @@ def _controller(settings: AppSettings | None = None, comparator=None) -> Pipelin
         FakeSegmentationModelLoader(OutdoorSegformerModel()),
     )
     return PipelineController(
-        settings, depth_estimator=SceneDepthEstimator(), segmenter=segmenter, comparator=comparator
+        settings,
+        depth_estimator=SceneDepthEstimator(),
+        segmenter=segmenter,
+        comparator=comparator,
+        aligner=aligner,
     )
 
 
@@ -244,3 +251,54 @@ def test_worker_reports_which_photos_were_rejected(qapp, room):
     worker.run()
 
     assert events == [("rejected", ["Después"]), ("error", "La fotografía")]
+
+
+# ---------------------------------------------- the check judges the original photos
+
+
+class _FalseAlignmentAligner(SpatialAlignmentService):
+    """Accepts a wrong homography that turns the "after" photo into something that looks like ``disguise``.
+
+    Reproduces what the real models did with an indoor "before" and an outdoor
+    "after": a handful of false matches passed RANSAC and the warped city view
+    showed almost no sky, so judging the aligned view let the outdoor photo in.
+    """
+
+    def __init__(self, disguise: ImageData) -> None:
+        super().__init__()
+        self._disguise = disguise
+
+    def align(self, before, after, after_depth):
+        report = AlignmentReport(True, "sift", 100, 100, 11, 11, 1.0, "Imágenes alineadas con 11 correspondencias.")
+        result = self.warp(before, after, after_depth, np.eye(3), report)
+        return replace(result, image=ImageData(self._disguise.pixels.copy(), after.source))
+
+
+def test_outdoor_after_photo_is_rejected_even_if_its_aligned_view_looks_indoor(room):
+    controller = _controller(comparator=_UnusedComparator(), aligner=_FalseAlignmentAligner(disguise=room))
+    with pytest.raises(NonIndoorSceneError) as error:
+        controller.analyze(room, _outdoor(room))
+    assert error.value.views == ("Después",)
+
+
+def test_outdoor_before_photo_is_rejected_whatever_the_alignment_does(room):
+    controller = _controller(comparator=_UnusedComparator(), aligner=_FalseAlignmentAligner(disguise=room))
+    with pytest.raises(NonIndoorSceneError) as error:
+        controller.analyze(_outdoor(room), room)
+    assert error.value.views == ("Antes",)
+
+
+def test_two_outdoor_photos_are_rejected_even_with_a_false_alignment(room):
+    outdoor = _outdoor(room)
+    controller = _controller(comparator=_UnusedComparator(), aligner=_FalseAlignmentAligner(disguise=room))
+    with pytest.raises(NonIndoorSceneError) as error:
+        controller.analyze(outdoor, outdoor)
+    assert error.value.views == ("Antes", "Después")
+
+
+def test_indoor_photos_give_the_same_result_with_and_without_the_check(builder, room):
+    moved = ImageData(builder.render([SceneObject(center_x=0.65)]), "moved.png")
+    checked = _controller().analyze(room, moved)
+    unchecked = _controller(AppSettings(segmentation=SegmentationSettings(check_indoor_scene=False))).analyze(room, moved)
+    assert [obj.summary for obj in checked.objects] == [obj.summary for obj in unchecked.objects]
+    assert checked.objects and checked.objects[0].label == unchecked.objects[0].label
