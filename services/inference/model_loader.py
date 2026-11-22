@@ -44,8 +44,8 @@ class HuggingFaceDepthModelLoader:
             model = AutoModelForDepthEstimation.from_pretrained(model_id, **options)
         except (OSError, ValueError) as exc:
             raise ModelLoadError(
-                f"No se pudo cargar el modelo de profundidad '{model_id}'. "
-                "Verifique la conexión a internet o que los pesos estén descargados."
+                "No se pudo cargar el modelo de profundidad. "
+                "Verifique la conexión a internet o que los archivos del modelo estén descargados."
             ) from exc
         model.to(device).eval()
         return DepthModelBundle(processor=processor, model=model)

@@ -110,7 +110,7 @@ def test_acquisition_service_rejects_low_resolution(write_image, scene_rgb):
 
 
 def test_acquisition_service_rejects_grayscale(write_image):
-    with pytest.raises(InvalidImageError, match="RGB"):
+    with pytest.raises(InvalidImageError, match="a color"):
         ImageAcquisitionService().from_file(write_image(np.zeros((480, 640), np.uint8), "gray.png"))
 
 

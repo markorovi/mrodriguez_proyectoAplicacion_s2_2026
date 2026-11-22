@@ -48,11 +48,14 @@ class ImageValidator:
         if pixels.dtype != np.uint8:
             report.add_error(
                 IssueCode.BIT_DEPTH,
-                "La imagen debe tener una profundidad de color de 8 bits por canal.",
+                "La imagen usa un formato de color que no es compatible. "
+                "Use una foto común, como las de un celular o una cámara.",
             )
 
         if pixels.ndim != 3 or pixels.shape[2] != 3:
-            report.add_error(IssueCode.CHANNELS, "La imagen debe ser a color (RGB, tres canales).")
+            report.add_error(
+                IssueCode.CHANNELS, "La imagen debe ser una foto a color; las fotos en blanco y negro no se aceptan."
+            )
 
         self._check_resolution(image, report)
 

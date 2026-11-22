@@ -100,5 +100,5 @@ class BaseDepthEstimator(ABC):
         pixels = image.pixels
         if pixels.dtype != np.uint8 or pixels.ndim != 3 or pixels.shape[2] != 3:
             raise DepthEstimationError(
-                "La estimación de profundidad requiere una imagen RGB de 8 bits."
+                "La profundidad solo se puede calcular en una foto a color común."
             )

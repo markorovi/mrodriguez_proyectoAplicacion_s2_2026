@@ -22,6 +22,7 @@ from models.segmentation_mask import UNIDENTIFIED_LABEL, SemanticLabel
 from services.inference import DeviceManager
 from services.segmentation import SegFormerSegmenter
 from tests.doubles import FakeSegmentationModelLoader, SceneDepthEstimator
+from tests.jargon import JARGON
 from ui import report_text
 from ui.banner import BannerKind
 from ui.image_status import ImageStatus
@@ -35,7 +36,6 @@ BEFORE = SAMPLES_DIR / "scene_before.png"
 MOVED = SAMPLES_DIR / "scene_after_moved.png"
 LOW_LIGHT = SAMPLES_DIR / "scene_low_light.png"
 
-JARGON = ("homografía", "ransac", "argmax", "pytorch", "cuda", "sift", "tensor", "segment")
 
 
 def _controller(cls=PipelineController) -> PipelineController:

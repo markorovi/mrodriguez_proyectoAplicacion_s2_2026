@@ -41,12 +41,12 @@ def test_resolution_below_minimum_is_rejected(validator, height, width):
 def test_non_rgb_images_are_rejected(validator, channels):
     report = validator.validate(_image(480, 640, channels=channels))
     assert not report.is_valid
-    assert any("RGB" in error for error in report.errors)
+    assert any("a color" in error for error in report.errors)
 
 
 def test_non_8_bit_images_are_rejected(validator):
     report = validator.validate(_image(480, 640, dtype=np.uint16))
-    assert any("8 bits" in error for error in report.errors)
+    assert any("formato de color" in error for error in report.errors)
 
 
 def test_dark_image_produces_warning_not_error(validator):

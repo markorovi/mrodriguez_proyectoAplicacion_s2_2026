@@ -105,8 +105,9 @@ class SpatialAlignmentService:
                 self._failure(
                     stats,
                     inliers,
-                    f"No se pudo alinear la segunda imagen con la primera: solo {inliers} "
-                    f"correspondencias son geométricamente consistentes ({required} necesarias).",
+                    f"No se pudo alinear la segunda imagen con la primera: solo {inliers} de los puntos "
+                    f"en común encajan entre sí ({required} necesarios). Tome la segunda foto desde "
+                    "una posición y con un encuadre más parecidos a la primera.",
                 )
             )
         if not self._is_plausible(homography):

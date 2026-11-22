@@ -91,7 +91,7 @@ class SegFormerSegmenter:
         """Class id of every pixel of ``image`` at its native resolution."""
         pixels = image.pixels
         if pixels.dtype != np.uint8 or pixels.ndim != 3 or pixels.shape[2] != 3:
-            raise SegmentationError("La segmentación requiere una imagen RGB de 8 bits.")
+            raise SegmentationError("Los objetos solo se pueden identificar en una foto a color común.")
         if not self.is_loaded:
             self.load()
         assert self._bundle is not None

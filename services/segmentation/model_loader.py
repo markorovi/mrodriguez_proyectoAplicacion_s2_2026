@@ -40,8 +40,8 @@ class HuggingFaceSegmentationModelLoader:
             model = AutoModelForSemanticSegmentation.from_pretrained(model_id, **options)
         except (OSError, ValueError) as exc:
             raise SegmentationError(
-                f"No se pudo cargar el modelo de segmentación '{model_id}'. "
-                "Verifique la conexión a internet o que los pesos estén descargados."
+                "No se pudo cargar el modelo que identifica los objetos. "
+                "Verifique la conexión a internet o que los archivos del modelo estén descargados."
             ) from exc
         model.to(device).eval()
         return SegmentationModelBundle(processor=processor, model=model)

@@ -21,7 +21,7 @@ from config import AppSettings, DepthSettings, SegmentationSettings
 from config.paths import SAMPLES_DIR
 from controllers import PipelineController
 from models import NonIndoorSceneError
-from tests.test_main_window import JARGON
+from tests.jargon import JARGON
 
 OUTDOOR_PHOTO = SAMPLES_DIR / "no_interior_01.png"
 GPS_IFD = 0x8825

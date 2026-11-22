@@ -172,7 +172,7 @@ def _photo_requirements(s: AppSettings) -> ManualSection:
         f"Resolución mínima: {s.image.min_width}x{s.image.min_height} píxeles, en posición horizontal "
         "o vertical. Una foto más pequeña se rechaza. Al capturar con la cámara, la aplicación "
         f"solicita fotos de {s.capture.frame_width}x{s.capture.frame_height}.",
-        "Color: fotos a color (RGB) de 8 bits por canal, como las de cualquier celular o cámara. "
+        "Color: fotos a color, como las de cualquier celular o cámara. "
         "Una foto en blanco y negro se rechaza.",
         "Iluminación: una foto se considera poco iluminada cuando su brillo medio es menor que "
         f"{s.image.low_light_threshold:.0f} en una escala de 0 (negro) a 255 (blanco). Se analiza "

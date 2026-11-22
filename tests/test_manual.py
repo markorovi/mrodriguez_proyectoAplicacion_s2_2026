@@ -14,7 +14,7 @@ from models import SessionHistory
 from services.inference import DeviceManager
 from services.segmentation import SegFormerSegmenter
 from tests.doubles import FakeSegmentationModelLoader, SceneDepthEstimator
-from tests.test_main_window import JARGON
+from tests.jargon import JARGON
 from tests.test_session_history import _report
 from ui import manual_text
 from ui.main_window import MainWindow

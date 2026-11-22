@@ -102,7 +102,7 @@ def test_runtime_failure_is_reported_as_segmentation_error(scene_image):
 
 def test_missing_weights_raise_segmentation_error(tmp_path):
     loader = HuggingFaceSegmentationModelLoader(tmp_path, local_files_only=True)
-    with pytest.raises(SegmentationError, match="segmentación"):
+    with pytest.raises(SegmentationError, match="identifica los objetos"):
         loader.load("nvidia/segformer-b0-finetuned-ade-512-512", torch.device("cpu"))
 
 
