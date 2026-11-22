@@ -36,18 +36,18 @@ servicios, de modo que cada modelo puede sustituirse sin modificar los demás m�
 | Paquete | Responsabilidad |
 |---|---|
 | `config/` | Configuración tipada e inmutable (Pydantic): criterios de imagen, cámara, modelo, perfil calibrado opcional `fx, fy, cx, cy` y estimación de la cámara. |
-| `models/` | Estructuras de datos del dominio (`ImageData`, `DepthMap`, `ValidationReport`, `AcquiredImage`, `AlignmentResult`, `SegmentationMask`, `ChangedObject`, `ComparisonReport`) y jerarquía de excepciones. Caché local de pesos en `models/weights/`. |
-| `services/capture/` | Fuentes de imagen (`ImageSource`, implementada por `FileImageLoader` y `CameraCapture`) y `ImageAcquisitionService`, que entrega imágenes ya validadas. |
+| `models/` | Estructuras de datos del dominio (`ImageData`, `DepthMap`, `ValidationReport`, `AcquiredImage`, `AlignmentResult`, `SegmentationMask`, `ChangedObject`, `ComparisonReport`), historial de la sesión (`SessionHistory`) y jerarquía de excepciones. Caché local de pesos en `models/weights/`. |
+| `services/capture/` | Fuentes de imagen (`ImageSource`, implementada por `FileImageLoader` y `CameraCapture`) y `ImageAcquisitionService`, que entrega imágenes ya validadas; `ExampleCatalog` lee los ejemplos precargados de `data/samples/examples.json`. |
 | `services/inference/` | `BaseDepthEstimator` (contrato común), `DepthAnythingV2Estimator`, `DeviceManager` (GPU/CPU), cargador de modelos de Hugging Face y `DepthLatencyBenchmark`. |
 | `services/alignment/` | `SpatialAlignmentService`: puntos de interés, emparejamiento, homografía RANSAC y deformación de imagen, profundidad y máscara de solapamiento. |
 | `services/segmentation/` | `SegFormerSegmenter` (GPU/CPU) y `RegionLabeler`, que nombra en español la región de un cambio. |
 | `services/comparison/` | `SpatialComparisonService`: diferencia de profundidad, regiones de cambio, retroproyección 3D y clasificación. |
 | `controllers/` | `PipelineController`: orquestación de extremo a extremo (fachada única para la interfaz). |
 | `utils/` | `ImageValidator`, estadísticas fotométricas, geometría pinhole, parámetros de cámara por foto (`camera_model`), calibración con tablero (`camera_calibration`), coloreado de mapas de profundidad, dibujo de los cambios y generador de escenas sintéticas. |
-| `ui/` | Interfaz gráfica de escritorio (PySide6): ventana principal (`MainWindow`), hilo de análisis (`PipelineWorker`), pantalla de resultado (`ReportWidget`) con exportación, y paneles y diálogo de selección de imágenes. Solo usa el `PipelineController` y los modelos de dominio. |
-| `scripts/` | Utilidades de línea de comandos: medición de latencia de la profundidad y del análisis completo (CPU y GPU), y calibración de la cámara. |
+| `ui/` | Interfaz gráfica de escritorio (PySide6): ventana principal (`MainWindow`), hilo de análisis (`PipelineWorker`), pantalla de resultado (`ReportWidget`) con exportación, historial de la sesión (`HistoryDialog`), manual de usuario (`ManualDialog`), y paneles y diálogo de selección de imágenes. Solo usa el `PipelineController` y los modelos de dominio. |
+| `scripts/` | Utilidades de línea de comandos: medición de latencia de la profundidad y del análisis completo (CPU y GPU), evidencia de los requisitos de rendimiento y portabilidad (`measure_requirements`) y calibración de la cámara. |
 | `tests/` | Pruebas unitarias y de integración con `pytest`. |
-| `data/samples/` | Escenas interiores sintéticas para demostración y pruebas sin conexión. |
+| `data/samples/` | Escenas interiores sintéticas para demostración y pruebas sin conexión, tres pares de fotos reales sin metadatos (`ejemplo_01_a.jpg` a `ejemplo_03_b.jpg`) para los ejemplos precargados y una foto de exterior (`no_interior_01.png`) para probar el rechazo de exteriores. Las fotos personales originales no se versionan (ver [data/samples/README.md](data/samples/README.md)). |
 
 Patrones aplicados:
 
@@ -86,19 +86,21 @@ Interfaz de usuario final (ACT-09) y verificación de escena interior (RF-012) c
 | Fotos reales, par 2 (taza desplazada, caja movida 5.6 cm, cubo retirado) | Verificada: los 3 cambios, sin falsos positivos; caja medida en 6.6 cm (error de 1.0 cm) |
 | `PipelineController` y `ComparisonReport` con imagen anotada | Completado |
 | Fotos reales, par 3 (caja girada y movida, taza colocada encima de la caja) | Verificada: 2 desplazamientos separados (caja 47.3 cm, taza 86.8 cm) |
-| Ventana principal: análisis en segundo plano con progreso, reporte por objeto, zoom, exportación (PNG + TXT/JSON) y guardado de la imagen | Completado |
-| Verificación de escena interior (RF-012) con la segmentación | Completado; fotos de exterior rechazadas (99.5 % y 99.7 % de exterior), interiores del proyecto entre 0 % y 0.2 % |
+| Ventana principal: análisis en segundo plano con progreso, reporte por objeto, zoom, fotos originales junto al resultado (RI-003), exportación (PNG + TXT/JSON) y guardado de la imagen | Completado |
+| Verificación de escena interior (RF-012) con la segmentación | Completado: juzga las dos fotos originales completas, no la vista alineada. Con el modelo real (`tests/test_indoor_real_integration.py`), la foto de exterior versionada `data/samples/no_interior_01.png` se rechaza con 99.5 % de exterior tanto como "Antes" como "Después", y se aceptan la escena sintética y el par `ejemplo_01` |
 | Parámetros de cámara por foto: perfil calibrado, distancia focal EXIF o estimación por campo de visión | Completado |
 | Calibración con tablero de ajedrez (`scripts/calibrate_camera.py`) | Herramienta completa y verificada con una cámara virtual; falta calibrar la cámara física |
-| Análisis completo en CPU (RF-010) | Medido: 6.0 s (640x480) y 9.0 s (1920x1080) por par con los modelos cargados; mismos cambios que en GPU |
+| Análisis completo en CPU (RF-010) | Medido ([docs/evidencia/rendimiento.md](docs/evidencia/rendimiento.md)): 7.72-9.15 s por par sintético de 640x480 y 11.68-11.95 s por par real de 1920x1080 (un solo análisis por par) con los modelos cargados, con aviso al usuario; mismos cambios que en GPU |
 | Historial de comparaciones de la sesión (RF-014) | Completado: lista de los análisis de la sesión, del más reciente al más antiguo, con el reporte de cada uno (en memoria, máximo 20) |
 | Manual de usuario integrado (RIS-001 y RIS-003): pautas para tomar las fotos, requisitos de las imágenes, lectura del resultado y avisos frecuentes | Completado |
 | Ejemplos precargados (RIS-002): escenas de prueba y fotos reales sin metadatos, en Archivo > Cargar ejemplo | Completado |
-| Pruebas | 331 unitarias + 20 de integración |
+| Mensajes e interfaz sin términos técnicos (RNF-001): avisos, textos de la ventana y nombre de la cámara ("Cámara N") | Completado; lo verifican `tests/test_user_messages.py` y `tests/test_ui_texts.py` |
+| Pruebas | Sin integración: 394 pasan y 25 se omiten. Con `RUN_INTEGRATION=1`: 418 pasan y 1 se omite (AKAZE, requiere `opencv-contrib-python`) |
 
 ### Rendimiento medido
 
-Variante *Small*, imagen 640x480, `python -m scripts.benchmark_depth`:
+Variante *Small*, imagen 640x480, `python -m scripts.benchmark_depth` (medido el 2026-10-29,
+commit `1415b4c`; solo profundidad, no la afecta RF-012):
 
 | Hardware | Precisión | Inferencia estable por imagen | Profundidad por par | Carga del modelo |
 |---|---|---|---|---|
@@ -110,31 +112,39 @@ La primera inferencia tras cargar el modelo tarda más (~0.7 s en GPU) por la in
 CUDA. La carga del modelo es el costo dominante, por lo que conviene mantenerlo en memoria
 entre análisis. En float16 la diferencia con float32 en CPU tiene una mediana menor al 2 %.
 
-Análisis completo de un par con `PipelineController` en la RTX 3070 (media de 10 análisis con
-los modelos ya cargados):
+Las cifras del análisis completo salen de la evidencia vigente,
+[docs/evidencia/rendimiento.md](docs/evidencia/rendimiento.md) (`python -m scripts.measure_requirements`,
+corrida sobre el commit `305f284`), que es la fuente única de estas mediciones. Cada análisis
+segmenta la foto "Antes", la vista "Después" alineada y, para la verificación de escena interior,
+la foto "Después" original.
 
-| Resolución | Profundidad | Alineación | Segmentación | Comparación | Total |
-|---|---|---|---|---|---|
-| 640x480 | 0.04 s | 0.05 s | 0.12 s | 0.01 s | 0.24 s |
-| 1920x1080 | 0.07 s | 0.22 s | 0.14 s | 0.10 s | 0.60 s |
+Análisis completo de un par con `PipelineController` en la RTX 3070, con los modelos ya
+cargados:
 
-El primer análisis, que incluye la carga de ambos modelos, tarda ~7 s. El pico de memoria de
-GPU con ambos modelos es de 869 MiB.
+| Resolución | Pares | Análisis por par | Profundidad | Alineación | Segmentación | Comparación | Total |
+|---|---|---|---|---|---|---|---|
+| 640x480 | 3 escenas sintéticas | media de 10 | 0.05 s | 0.06 s | 0.22-0.23 s | 0.01-0.03 s | 0.34-0.38 s |
+| 1920x1080 | 3 pares reales | media de 3 | 0.08 s | 0.26-0.29 s | 0.26-0.30 s | 0.16-0.29 s | 0.84-0.90 s |
 
-Análisis completo en CPU frente a GPU, `python -m scripts.benchmark_pipeline` (16 de noviembre
-de 2026; media de 3 análisis con los modelos cargados; el primer análisis incluye la carga):
+El primer análisis del proceso, que incluye la carga de ambos modelos, tardó 12.94 s (10.56 s de
+carga). PyTorch reservó como máximo 871 MiB en la GPU; según `nvidia-smi`, la memoria usada subió
+1551 MiB sobre el reposo.
+
+Análisis completo en CPU frente a GPU (el primer análisis del proceso incluye la carga):
 
 | Par | Hardware | Primer análisis (carga) | Con modelos en memoria | Profundidad | Segmentación |
 |---|---|---|---|---|---|
-| Sintético 640x480 | CPU | 16.45 s (10.03 s) | 5.98 s | 1.85 s | 3.94 s |
-| Sintético 640x480 | RTX 3070 | 3.51 s (1.72 s) | 0.34 s | 0.06 s | 0.18 s |
-| Real 1920x1080 (par 2) | CPU | — | 8.96 s | 2.84 s | 4.98 s |
-| Real 1920x1080 (par 2) | RTX 3070 | — | 0.79 s | 0.08 s | 0.19 s |
+| Sintético 640x480 (desplazamiento) | CPU | 16.59 s (6.84 s) | 8.02 s (media de 3) | 1.92 s | 5.94 s |
+| Sintético 640x480 (desplazamiento) | RTX 3070 | 12.94 s (10.56 s) | 0.38 s (media de 10) | 0.05 s | 0.23 s |
+| Real 1920x1080 (par 2) | CPU | — | 11.95 s (un solo análisis) | 2.96 s | 7.85 s |
+| Real 1920x1080 (par 2) | RTX 3070 | — | 0.86 s (media de 3) | 0.08 s | 0.26 s |
 
 En CPU la segmentación (SegFormer-B4) es la etapa más lenta. Ambos dispositivos detectan los
-mismos cambios; las distancias difieren en 0.1-0.2 cm por la precisión mixta de la GPU. La carga
-de los modelos depende del disco: con los pesos ya en la caché del sistema baja a 1.7 s en GPU;
-en la primera ejecución tras encender el equipo puede tardar varios segundos más.
+mismos cambios; las distancias difieren en 0.1-0.2 cm por la precisión mixta de la GPU (51.6 cm
+en GPU y 51.5 cm en CPU para la caja desplazada). La carga de los modelos depende del disco: con
+los pesos ya en la caché del sistema bajó a 1.7 s en GPU (medido antes de la verificación de
+interior (RF-012), commit `051e3a4`); en la primera ejecución tras encender el equipo puede tardar
+varios segundos más.
 
 ## Requisitos de las imágenes de entrada
 
@@ -147,8 +157,10 @@ en la primera ejecución tras encender el equipo puede tardar varios segundos m�
 | Escena interior | Como máximo 25 % de la foto con clases de exterior (cielo, árbol, césped, tierra, montaña, mar, edificio...) según la segmentación | El análisis se detiene antes de la comparación e indica qué foto reemplazar |
 
 La comprobación de escena interior (RF-012) usa la segmentación de SegFormer, así que ocurre
-durante el análisis, no al cargar la foto. Las plantas no cuentan como exterior, porque las
-macetas son comunes dentro de una habitación. Se configura con
+durante el análisis, no al cargar la foto. Se juzgan las dos fotos originales completas, tal como
+se tomaron, y no la vista "Después" alineada: una alineación errónea entre fotos sin relación
+podría deformar un exterior hasta que pareciera una habitación. Las plantas no cuentan como
+exterior, porque las macetas son comunes dentro de una habitación. Se configura con
 `segmentation.check_indoor_scene` y `segmentation.max_outdoor_percent`, y no se aplica si la
 segmentación está desactivada.
 
@@ -190,9 +202,11 @@ Sin GPU la aplicación funciona igual en CPU y avisa que el proceso puede tardar
 
 ### Pesos del modelo
 
-La primera ejecución descarga los pesos (~100 MB para la variante *Small*) en
-`models/weights/`. Las siguientes ejecuciones los reutilizan; con `local_files_only=True` en
-la configuración no se accede a la red.
+La primera ejecución descarga en `models/weights/` los pesos del modelo de profundidad (unos
+95 MB para la variante *Small*) y los de SegFormer-B4
+(`nvidia/segformer-b4-finetuned-ade-512-512`, unos 490 MB); los tamaños son aproximados, según la
+caché local. Las siguientes ejecuciones los reutilizan; con `local_files_only=True` en la
+configuración no se accede a la red.
 
 Revise la licencia de cada checkpoint en su ficha de Hugging Face antes de un uso comercial:
 la variante *Small* se distribuye bajo Apache-2.0 y las variantes *Base* y *Large* bajo
@@ -213,7 +227,8 @@ La ventana principal guía el análisis en tres pasos:
    así que la ventana no se congela; una barra muestra la etapa en curso. Si falla, la
    ventana vuelve al paso 1 con un aviso rojo y conserva las fotos para reintentar.
 3. **Resultado.** A la izquierda, la imagen con los cambios marcados (rueda del ratón para
-   acercar o alejar, arrastrar para moverse). A la derecha, un aviso verde si no hubo cambios
+   acercar o alejar, arrastrar para moverse) y, debajo, las dos fotos originales ("Antes" y
+   "Después") en miniatura. A la derecha, un aviso verde si no hubo cambios
    o una tarjeta por objeto (tipo de cambio, categoría, distancia en cm y una explicación),
    las advertencias en amarillo y los tiempos. **Exportar reporte...** guarda la imagen en PNG
    y un resumen en texto (`.txt`) o JSON (`.json`) con el mismo nombre. **Guardar imagen...**
@@ -502,9 +517,12 @@ calibre la cámara con la que realmente toma las fotos que analiza.
 |-- controllers/         Orquestación del pipeline (PipelineController)
 |-- utils/               Validación de imágenes, visualización y utilidades numéricas
 |-- ui/                  Interfaz gráfica (ventana principal, resultado y selección de imágenes)
-|-- scripts/             Medición de latencia (profundidad y análisis completo) y calibración
+|-- scripts/             Medición de latencia (profundidad y análisis completo), evidencia de
+|                        rendimiento (measure_requirements) y calibración
 |-- tests/               Pruebas con pytest
 |-- data/samples/        Imágenes de ejemplo y resultados de muestra
+|-- docs/evidencia/      Evidencia de rendimiento y portabilidad (rendimiento.md y .json)
+|-- Documents/           Documentos del proyecto en PDF (avances, diseño, requerimientos, plan)
 |-- pyproject.toml       Configuración de pytest
 |-- requirements.txt
 `-- requirements-cuda.txt  PyTorch con soporte CUDA (opcional)
@@ -512,8 +530,8 @@ calibre la cámara con la que realmente toma las fotos que analiza.
 
 ## Próximos pasos
 
-1. **Escena interior**: prueba de integración con fotos de exterior y calibración del umbral del
-   25 % con casos límite (habitaciones con ventanales, balcones, patios techados).
+1. **Escena interior**: calibración del umbral del 25 % con casos límite (habitaciones con
+   ventanales, balcones, patios techados).
 2. **Validación con más fotos reales**: calibrar con el tablero la cámara que toma las fotos,
    y más pares (objetos retirados, varios cambios, cámara en mano) con distancias medidas con
    cinta, para cuantificar el error de cada fuente de parámetros.
