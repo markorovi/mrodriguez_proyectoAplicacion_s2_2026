@@ -28,6 +28,8 @@ JARGON = (
     "geométricamente",
     "gpu",
     "cpu",
+    # Internal identifier of a camera capture; the user sees "Cámara N" instead.
+    "camera:",
 )
 
 

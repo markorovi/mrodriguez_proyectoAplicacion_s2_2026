@@ -21,6 +21,7 @@ from config.paths import SAMPLES_DIR
 from models.acquired_image import AcquiredImage
 from models.exceptions import InvalidImageError, SceneDiffError
 from models.image_data import ImageData
+from models.session_history import display_name
 from services.capture.acquisition_service import ImageAcquisitionService
 from ui import theme
 from ui.image_status import ImageStatus, Severity, status_for_error, status_for_report
@@ -211,8 +212,8 @@ class ImageSlotWidget(QGroupBox):
 
     @staticmethod
     def _describe(image: ImageData) -> str:
-        name = Path(image.source).name if not image.source.startswith("camera:") else image.source
-        return f"{name} | {image.width}x{image.height}"
+        # The same short name as in the history: the file name, or "Cámara N" for a capture.
+        return f"{display_name(image.source)} | {image.width}x{image.height}"
 
 
 def _checked_on_load(status: ImageStatus) -> str:

@@ -107,7 +107,7 @@ def test_capture_uses_the_selected_camera(qapp):
 
     assert requested == [1]
     assert dialog.before_slot.status is ImageStatus.VALID
-    assert "camera:1" in dialog.before_slot.detail_text
+    assert "Cámara 1" in dialog.before_slot.detail_text
 
 
 def test_unavailable_camera_shows_camera_error(qapp):
