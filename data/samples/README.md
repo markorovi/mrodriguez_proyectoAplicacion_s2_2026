@@ -13,9 +13,14 @@ Escenas interiores sintéticas de 640x480 generadas con `utils/synthetic_scene.p
 | `comparison_output_sample.png` | Resultado del análisis completo de `scene_before.png` contra `scene_after_moved.png`, con la posición anterior, la actual y la distancia recorrida; lo generan las pruebas de integración del pipeline. |
 | `ejemplo_01_a.jpg` a `ejemplo_03_b.jpg` | Tres pares de fotos reales de un espacio interior (1920x1080), tomadas por el autor del proyecto. Son copias de sus fotos con los metadatos eliminados (sin EXIF ni ubicación GPS); `_a` es la foto "antes" y `_b` la "después". |
 | `examples.json` | Manifiesto de los ejemplos que ofrece la aplicación en **Archivo > Cargar ejemplo**: las tres escenas sintéticas y los tres pares `ejemplo_*`. |
+| `no_interior_01.png` | Foto de exterior (936x622), tomada por el autor y versionada sin metadatos. Es solo el caso negativo de la comprobación de escena interior: `tests/test_indoor_real_integration.py` verifica con el modelo real que se rechaza, tanto como foto "antes" como "después". No se ofrece como ejemplo en la aplicación. |
 
 Los nombres `ejemplo_*` no empiezan por `real_` a propósito: las pruebas de integración tratan los
 pares `real_before*` / `real_after*` como fotos de validación, y los ejemplos no deben alterarlas.
+
+Las fotos personales originales (los pares `real_before*` / `real_after*`, sus resultados
+`real_comparison_output*.png` y las fotos de exterior de origen) no se versionan: solo se suben las
+copias sin metadatos listadas arriba.
 
 Para probar con fotos reales, copie aquí cada par como `real_before<sufijo>.<ext>` y
 `real_after<sufijo>.<ext>` (por ejemplo `real_before_2.jpg` y `real_after_2.jpg`). Las pruebas de
