@@ -7,6 +7,7 @@ so a later rewording is checked as it really reads.
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 
 import cv2
@@ -344,3 +345,11 @@ def test_domain_message_avoids_technical_terms(number, request, tmp_path):
     text = produce(tmp_path) if number in _NEEDS_TMP_PATH else produce()
     assert text.strip()
     assert jargon_found(text) == [], text
+
+
+def test_depth_size_mismatch_hides_internal_sizes():
+    # Message 19: the user is told what happened, not the sizes the model worked with.
+    text = _m19_depth_size_mismatch()
+    assert jargon_found(text) == [], text
+    assert "mapa" not in text.lower(), text
+    assert not re.search(r"\(\d+,\s*\d+\)", text), text

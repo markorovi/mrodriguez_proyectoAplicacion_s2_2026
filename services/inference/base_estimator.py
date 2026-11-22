@@ -77,8 +77,8 @@ class BaseDepthEstimator(ABC):
 
         if values.shape != (image.height, image.width):
             raise DepthEstimationError(
-                f"El modelo devolvió un mapa de {values.shape} para una imagen "
-                f"de {(image.height, image.width)}."
+                "No se pudo calcular la profundidad de la imagen. "
+                "Intente de nuevo; si el problema continúa, reinicie la aplicación."
             )
         return DepthMap(
             values=values.astype(np.float32, copy=False),
