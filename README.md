@@ -313,19 +313,25 @@ $env:RUN_INTEGRATION=1; pytest -m integration -v -s     # PowerShell
 
 Las pruebas de integración del pipeline ([tests/test_pipeline_integration.py](tests/test_pipeline_integration.py))
 ejecutan el análisis completo con los modelos reales sobre los pares de muestra (caja movida,
-retirada, sin cambios y con poca luz), verifican que los tres pasos con PyTorch corren en la GPU
-y guardan la imagen anotada en `data/samples/comparison_output_sample.png`.
+retirada, sin cambios y con poca luz) y verifican que los tres pasos con PyTorch corren en la GPU.
 
 Las pruebas de integración de hardware ([tests/test_hardware_integration.py](tests/test_hardware_integration.py))
 verifican que la inferencia corre en la GPU, miden la latencia, comparan float16 en GPU con
-float32 en CPU, capturan desde la webcam y guardan el mapa de profundidad coloreado en
-`data/samples/depth_output_sample.png`. Las que no encuentran su hardware o sus datos se omiten:
+float32 en CPU, capturan desde la webcam y calculan el mapa de profundidad coloreado de la escena
+sintética `scene_before.png`.
+
+Ninguna prueba modifica el repositorio: las imágenes que generan van al directorio temporal de
+pytest ([tests/sample_outputs.py](tests/sample_outputs.py)). Solo con `UPDATE_SAMPLES=1` se
+regeneran las dos muestras versionadas, `data/samples/comparison_output_sample.png` y
+`data/samples/depth_output_sample.png`. Las pruebas que no encuentran su hardware o sus datos se
+omiten:
 
 - **Fotos reales**: copie cada par de fotos del mismo espacio como
   `data/samples/real_before<sufijo>.jpg` y `data/samples/real_after<sufijo>.jpg` (cualquier
   formato admitido), por ejemplo `real_before.jpg`/`real_after.jpg` y
   `real_before_2.jpg`/`real_after_2.jpg`. Cada par se prueba por separado y su resultado
-  anotado se guarda como `real_comparison_output<sufijo>.png`. El resultado esperado de cada par
+  anotado se guarda como `real_comparison_output<sufijo>.png` en el directorio temporal de pytest
+  (nunca en el repositorio; `.gitignore` excluye las fotos personales). El resultado esperado de cada par
   puede declararse en `data/samples/real_pairs.json` (ver [tests/real_pairs.py](tests/real_pairs.py)).
 - **Webcam**: se prueban los índices 0-3; para fijar uno, defina `CAMERA_INDEX`
   (`$env:CAMERA_INDEX=1` en PowerShell).

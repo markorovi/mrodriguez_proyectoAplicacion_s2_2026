@@ -19,6 +19,13 @@ models/weights/
 # Internal progress tracking
 PROGRESS_LOG.txt
 
+# Personal photos and their annotated results (never versioned; see data/samples/README.md).
+# Specific prefixes only: real_pairs.json and no_interior_01.png stay versioned.
+data/samples/real_before*
+data/samples/real_after*
+data/samples/real_comparison_output*
+data/samples/exterior*
+
 # IDE and OS artifacts
 .vscode/
 .idea/

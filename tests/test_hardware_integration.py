@@ -11,13 +11,16 @@ Optional inputs:
   first one that delivers a frame is used.
 
 Tests whose hardware or inputs are missing are skipped, not failed.
+
+The colored depth map is computed from the synthetic ``scene_before.png`` only,
+never from a personal photo, and is written to pytest's temporary directory.
+With ``UPDATE_SAMPLES=1`` it replaces ``data/samples/depth_output_sample.png``
+(see :mod:`tests.sample_outputs`).
 """
 
 from __future__ import annotations
 
 import os
-from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pytest
@@ -25,16 +28,18 @@ import torch
 from PIL import Image
 
 from config import DepthSettings, DevicePreference
-from config.image_settings import DEFAULT_EXTENSIONS
 from config.paths import SAMPLES_DIR
 from models import CameraError, ImageData
 from services.capture import ImageAcquisitionService
 from services.inference import DepthAnythingV2Estimator, DepthLatencyBenchmark
 from tests.real_pairs import real_pair_params
+from tests.sample_outputs import output_path
 from utils.depth_visualization import colorize_depth
 
 PIPELINE_BUDGET_SECONDS = 15.0
-DEPTH_OUTPUT = SAMPLES_DIR / "depth_output_sample.png"
+DEPTH_OUTPUT = "depth_output_sample.png"
+# The versioned depth sample always comes from the synthetic scene, never from a personal photo.
+DEPTH_SAMPLE_SOURCE = SAMPLES_DIR / "scene_before.png"
 
 pytestmark = [
     pytest.mark.integration,
@@ -45,14 +50,6 @@ pytestmark = [
 ]
 
 requires_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="no CUDA GPU available")
-
-
-def _find_sample(stem: str) -> Optional[Path]:
-    for ext in DEFAULT_EXTENSIONS:
-        for candidate in (SAMPLES_DIR / f"{stem}{ext}", SAMPLES_DIR / f"{stem}{ext.upper()}"):
-            if candidate.is_file():
-                return candidate
-    return None
 
 
 @pytest.fixture(scope="module")
@@ -139,13 +136,13 @@ def test_webcam_frame_produces_metric_depth(gpu_estimator, webcam_image):
 
 
 @requires_cuda
-def test_depth_output_sample_is_saved(gpu_estimator, acquisition):
-    source = _find_sample("real_before") or SAMPLES_DIR / "scene_before.png"
-    image = acquisition.from_file(source).image
+def test_depth_output_sample_is_saved(gpu_estimator, acquisition, tmp_path):
+    image = acquisition.from_file(DEPTH_SAMPLE_SOURCE).image
     colored = colorize_depth(gpu_estimator.estimate(image))
 
-    Image.fromarray(colored).save(DEPTH_OUTPUT)
+    destination = output_path(DEPTH_OUTPUT, tmp_path)
+    Image.fromarray(colored).save(destination)
 
-    assert DEPTH_OUTPUT.is_file()
-    with Image.open(DEPTH_OUTPUT) as saved:
+    assert destination.is_file()
+    with Image.open(destination) as saved:
         assert saved.size == (image.width, image.height)

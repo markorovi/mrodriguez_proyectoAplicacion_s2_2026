@@ -4,12 +4,15 @@ Opt-in, like every test that loads pretrained models:
 
     RUN_INTEGRATION=1 pytest tests/test_pipeline_integration.py -v
 
-Uses the synthetic sample pair in ``data/samples`` and writes the annotated
-result of the "moved" pair to ``data/samples/comparison_output_sample.png``.
-Every real pair found by :mod:`tests.real_pairs` (``real_before<suffix>`` /
-``real_after<suffix>``) is analyzed too, checked against the expectations in
-``data/samples/real_pairs.json`` and written to
-``real_comparison_output<suffix>.png``.
+Uses the synthetic sample pair in ``data/samples``. Every real pair found by
+:mod:`tests.real_pairs` (``real_before<suffix>`` / ``real_after<suffix>``) is
+analyzed too and checked against the expectations in
+``data/samples/real_pairs.json``.
+
+Annotated results are written to pytest's temporary directory, never into the
+repository (see :mod:`tests.sample_outputs`). Only with ``UPDATE_SAMPLES=1`` is
+the result of the "moved" pair saved as ``data/samples/comparison_output_sample.png``;
+the results of the real pairs always stay in the temporary directory.
 """
 
 from __future__ import annotations
@@ -25,9 +28,10 @@ from config.paths import SAMPLES_DIR
 from controllers import PipelineController
 from models import ChangeType
 from tests.real_pairs import real_pair_params, unmatched_real_images
+from tests.sample_outputs import output_path
 
 PIPELINE_BUDGET_SECONDS = 15.0
-COMPARISON_OUTPUT = SAMPLES_DIR / "comparison_output_sample.png"
+COMPARISON_OUTPUT = "comparison_output_sample.png"
 
 pytestmark = [
     pytest.mark.integration,
@@ -48,9 +52,9 @@ def _analyze(controller, after_name: str):
     return controller.analyze_files(SAMPLES_DIR / "scene_before.png", SAMPLES_DIR / after_name)
 
 
-def test_moved_box_is_a_single_displacement(controller):
+def test_moved_box_is_a_single_displacement(controller, tmp_path):
     report = _analyze(controller, "scene_after_moved.png")
-    Image.fromarray(report.annotated_image).save(COMPARISON_OUTPUT)
+    Image.fromarray(report.annotated_image).save(output_path(COMPARISON_OUTPUT, tmp_path))
 
     assert report.alignment.succeeded
     assert [obj.change_type for obj in report.objects] == [ChangeType.DISPLACED]
@@ -90,9 +94,10 @@ def test_models_run_on_the_gpu_within_budget(controller):
 
 
 @pytest.mark.parametrize("pair", real_pair_params())
-def test_real_photo_pair(controller, pair):
+def test_real_photo_pair(controller, pair, tmp_path):
     report = controller.analyze_files(pair.before, pair.after)
-    Image.fromarray(report.annotated_image).save(pair.output_path)
+    # Personal photos: their annotated result is never written into the repository.
+    Image.fromarray(report.annotated_image).save(output_path(pair.output_path.name, tmp_path))
     print(f"\n{pair.name}: " + ("; ".join(obj.summary for obj in report.objects) or "sin cambios"))
 
     assert report.alignment.succeeded, report.alignment.message
