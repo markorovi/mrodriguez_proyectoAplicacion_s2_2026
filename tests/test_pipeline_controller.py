@@ -236,3 +236,80 @@ def test_controller_does_not_name_the_concrete_segmenter():
             imported.update(alias.name for alias in node.names)
     assert "services.segmentation.segformer_segmenter" not in imported
     assert "services.segmentation.base_segmenter" in imported
+
+
+# --- Runtime failures of the comparison and rendering stages (PROMPT 18) -------------------------
+
+from models import DepthEstimationError, SceneDiffError  # noqa: E402
+
+COMPARISON_FAILED = "No se pudieron comparar las imágenes. Cierre otras aplicaciones e intente de nuevo."
+RENDERING_FAILED = "No se pudo dibujar el resultado de la comparación. Cierre otras aplicaciones e intente de nuevo."
+
+
+class _FailingComparator:
+    """Stands in for the comparison service and raises ``error`` on every comparison."""
+
+    device_name = ""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    def compare(self, *args, **kwargs):
+        raise self.error
+
+
+def _failing_controller(estimator, comparator) -> PipelineController:
+    segmenter = SegFormerSegmenter(
+        SegmentationSettings(), DeviceManager(DevicePreference.CPU), FakeSegmentationModelLoader()
+    )
+    return PipelineController(AppSettings(), depth_estimator=estimator, segmenter=segmenter, comparator=comparator)
+
+
+def test_runtime_failure_in_the_comparison_becomes_a_domain_error(estimator, before, moved):
+    failure = RuntimeError("CUDA out of memory")
+    controller = _failing_controller(estimator, _FailingComparator(failure))
+
+    with pytest.raises(SceneDiffError) as raised:
+        controller.analyze(before, moved)
+
+    assert type(raised.value).__name__ == "ComparisonError"
+    assert str(raised.value) == COMPARISON_FAILED
+    assert raised.value.__cause__ is failure
+
+
+def test_runtime_failure_while_drawing_the_result_becomes_a_domain_error(monkeypatch, estimator, before, moved):
+    failure = RuntimeError("out of memory")
+
+    def failing_draw(*args, **kwargs):
+        raise failure
+
+    monkeypatch.setattr(pipeline_module, "draw_changes", failing_draw)
+
+    with pytest.raises(SceneDiffError) as raised:
+        _controller(estimator).analyze(before, moved)
+
+    assert type(raised.value).__name__ == "ComparisonError"
+    assert str(raised.value) == RENDERING_FAILED
+    assert raised.value.__cause__ is failure
+
+
+def test_guard_value_errors_of_the_comparison_are_not_translated(estimator, before, moved):
+    # Guard: invariant checks of the comparison (ValueError) keep surfacing as they are.
+    failure = ValueError("The after image has shape (1, 1); expected (480, 640).")
+    controller = _failing_controller(estimator, _FailingComparator(failure))
+
+    with pytest.raises(ValueError) as raised:
+        controller.analyze(before, moved)
+
+    assert raised.value is failure
+
+
+def test_guard_domain_errors_of_the_comparison_pass_unchanged(estimator, before, moved):
+    # Guard: an error that is already a domain error is re-raised as it is.
+    failure = DepthEstimationError("No se pudo calcular la profundidad de la imagen.")
+    controller = _failing_controller(estimator, _FailingComparator(failure))
+
+    with pytest.raises(DepthEstimationError) as raised:
+        controller.analyze(before, moved)
+
+    assert raised.value is failure

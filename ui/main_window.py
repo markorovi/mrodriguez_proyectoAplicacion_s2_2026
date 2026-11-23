@@ -221,7 +221,11 @@ class MainWindow(QMainWindow):
         """Show the comparisons of this session (CU-03); not available while analyzing."""
         if self.is_analyzing:
             return
-        self.history_dialog().exec()
+        dialog = self.history_dialog()
+        try:
+            dialog.exec()
+        finally:
+            dialog.deleteLater()  # a new one, with the current history, is built on every opening
 
     def manual_dialog(self) -> ManualDialog:
         """Build the user manual for the settings this window runs with, without showing it."""
@@ -229,7 +233,11 @@ class MainWindow(QMainWindow):
 
     def open_manual(self) -> None:
         """Show the user manual; available at any step, also while an analysis runs."""
-        self.manual_dialog().exec()
+        dialog = self.manual_dialog()
+        try:
+            dialog.exec()
+        finally:
+            dialog.deleteLater()
 
     @property
     def can_save_image(self) -> bool:

@@ -764,3 +764,37 @@ def test_report_export_error_belongs_to_the_domain_error_family():
     from ui.report_export import ReportExportError
 
     assert issubclass(ReportExportError, SceneDiffError)
+
+
+# --- Dialogs are released after being shown (PROMPT 18) --------------------------------------------
+
+
+def _live_children(main, dialog_class) -> int:
+    from PySide6.QtCore import QCoreApplication, QEvent
+
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    return len(main.findChildren(dialog_class))
+
+
+def test_opening_the_history_repeatedly_keeps_at_most_one_dialog(window, monkeypatch):
+    from ui.history_dialog import HistoryDialog
+
+    monkeypatch.setattr(HistoryDialog, "exec", lambda self: 0)  # no modal loop in the tests
+    main = window()
+
+    for _ in range(5):
+        main.open_history()
+
+    assert _live_children(main, HistoryDialog) <= 1
+
+
+def test_opening_the_manual_repeatedly_keeps_at_most_one_dialog(window, monkeypatch):
+    from ui.manual_dialog import ManualDialog
+
+    monkeypatch.setattr(ManualDialog, "exec", lambda self: 0)  # no modal loop in the tests
+    main = window()
+
+    for _ in range(5):
+        main.open_manual()
+
+    assert _live_children(main, ManualDialog) <= 1

@@ -71,6 +71,14 @@ class SegmentationError(SceneDiffError):
     """Semantic segmentation could not be completed or its model loaded."""
 
 
+class ComparisonError(SceneDiffError):
+    """The comparison of the two views, or the drawing of its result, failed while running.
+
+    Raised for unexpected runtime failures (for example, running out of
+    memory); the invariant checks of the comparison still raise ``ValueError``.
+    """
+
+
 class CalibrationError(SceneDiffError):
     """The camera could not be calibrated from the given chessboard photos."""
 

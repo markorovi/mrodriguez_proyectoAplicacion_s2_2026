@@ -283,6 +283,31 @@ def _m32_segmentation_size_mismatch() -> str:
     return _raised(lambda: _WrongSizeSegmenter().segment(ImageData(np.zeros((480, 640, 3), np.uint8), "foto")))
 
 
+class _FailingComparator:
+    device_name = ""
+
+    def compare(self, *args, **kwargs):
+        raise RuntimeError("CUDA out of memory")
+
+
+def _m33_comparison_failed() -> str:
+    segmenter = SegFormerSegmenter(
+        SegmentationSettings(), DeviceManager(DevicePreference.CPU), FakeSegmentationModelLoader()
+    )
+    controller = PipelineController(
+        AppSettings(), depth_estimator=SceneDepthEstimator(), segmenter=segmenter, comparator=_FailingComparator()
+    )
+    return _raised(lambda: controller.analyze(_room(0.3), _room(0.6)))
+
+
+def _m34_rendering_failed() -> str:
+    def failing_draw(*args, **kwargs):
+        raise RuntimeError("out of memory")
+
+    with patch("controllers.pipeline_controller.draw_changes", failing_draw):
+        return _raised(lambda: _controller().analyze(_room(0.3), _room(0.6)))
+
+
 def _segmenter(loader: FakeSegmentationModelLoader) -> SegFormerSegmenter:
     return SegFormerSegmenter(SegmentationSettings(), DeviceManager(DevicePreference.CPU), loader)
 
@@ -364,6 +389,8 @@ MESSAGES = {
     30: _m30_depth_model_download_failed,
     31: _m31_segmentation_model_download_failed,
     32: _m32_segmentation_size_mismatch,
+    33: _m33_comparison_failed,
+    34: _m34_rendering_failed,
 }
 
 _NEEDS_TMP_PATH = {16, 17, 21, 22, 25, 26, 27, 28, 30, 31}

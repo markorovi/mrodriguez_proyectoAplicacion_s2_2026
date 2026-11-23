@@ -12,7 +12,7 @@ from models.acquired_image import AcquiredImage
 from models.alignment import AlignmentResult
 from models.comparison_report import ComparisonReport
 from models.depth_map import DepthMap
-from models.exceptions import AlignmentError, NonIndoorSceneError
+from models.exceptions import AlignmentError, ComparisonError, NonIndoorSceneError
 from models.image_data import ImageData
 from models.segmentation_mask import SegmentationMask
 from services.alignment.spatial_alignment_service import SpatialAlignmentService
@@ -37,6 +37,11 @@ ProgressCallback = Callable[[str], None]
 STAGES = ("acquisition", "loading", "depth", "alignment", "segmentation", "comparison", "rendering")
 
 LOW_OVERLAP_FRACTION = 0.5
+
+COMPARISON_FAILED_MESSAGE = "No se pudieron comparar las imágenes. Cierre otras aplicaciones e intente de nuevo."
+RENDERING_FAILED_MESSAGE = (
+    "No se pudo dibujar el resultado de la comparación. Cierre otras aplicaciones e intente de nuevo."
+)
 
 
 class PipelineController:
@@ -187,19 +192,25 @@ class PipelineController:
 
         with timed("comparison"):
             camera = resolve_intrinsics(before.image, self._settings.camera, self._settings.camera_estimation)
-            comparison = self._comparator.compare(
-                before.image,
-                aligned.image,
-                depth_before,
-                aligned.depth,
-                camera.intrinsics,
-                aligned.valid_mask,
-                segmentation_before,
-                segmentation_after,
-            )
+            try:
+                comparison = self._comparator.compare(
+                    before.image,
+                    aligned.image,
+                    depth_before,
+                    aligned.depth,
+                    camera.intrinsics,
+                    aligned.valid_mask,
+                    segmentation_before,
+                    segmentation_after,
+                )
+            except RuntimeError as error:  # e.g. out of memory; ValueError invariants pass as they are
+                raise ComparisonError(COMPARISON_FAILED_MESSAGE) from error
 
         with timed("rendering"):
-            annotated = draw_changes(aligned.image.pixels, comparison.objects)
+            try:
+                annotated = draw_changes(aligned.image.pixels, comparison.objects)
+            except RuntimeError as error:
+                raise ComparisonError(RENDERING_FAILED_MESSAGE) from error
 
         return ComparisonReport(
             objects=comparison.objects,
