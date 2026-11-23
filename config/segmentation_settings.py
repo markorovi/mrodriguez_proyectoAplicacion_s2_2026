@@ -27,7 +27,11 @@ class SegmentationSettings(BaseModel):
     half_precision: bool = Field(default=True, description="Use float16 autocast when running on CUDA.")
     cache_dir: Path = WEIGHTS_DIR
     local_files_only: bool = Field(
-        default=False, description="Never reach the network; load weights from the cache only."
+        default=False,
+        description=(
+            "Weights are always loaded from the cache first, without the network. When they are "
+            "missing, true fails right away and false downloads them into the cache."
+        ),
     )
     min_label_coverage: float = Field(
         default=0.25,

@@ -51,7 +51,10 @@ class DepthSettings(BaseModel):
     cache_dir: Path = WEIGHTS_DIR
     local_files_only: bool = Field(
         default=False,
-        description="Never reach the network; load weights from the cache only.",
+        description=(
+            "Weights are always loaded from the cache first, without the network. When they are "
+            "missing, true fails right away and false downloads them into the cache."
+        ),
     )
 
     @property

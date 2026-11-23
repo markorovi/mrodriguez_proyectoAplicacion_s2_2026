@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import replace
+from unittest.mock import patch
 
 import cv2
 import numpy as np
@@ -253,6 +254,25 @@ def _m22_segmentation_model_missing(tmp_path) -> str:
     return _raised(lambda: loader.load(SegmentationSettings().model_id, torch.device("cpu")))
 
 
+def _unreachable_hub():
+    """Every ``from_pretrained`` fails as with missing files and no connection; nothing is downloaded."""
+    import transformers
+
+    return patch.object(transformers.AutoImageProcessor, "from_pretrained", side_effect=OSError("sin conexión"))
+
+
+def _m30_depth_model_download_failed(tmp_path) -> str:
+    loader = HuggingFaceDepthModelLoader(tmp_path, local_files_only=False)
+    with _unreachable_hub():
+        return _raised(lambda: loader.load(DepthSettings().model_id, torch.device("cpu")))
+
+
+def _m31_segmentation_model_download_failed(tmp_path) -> str:
+    loader = HuggingFaceSegmentationModelLoader(tmp_path, local_files_only=False)
+    with _unreachable_hub():
+        return _raised(lambda: loader.load(SegmentationSettings().model_id, torch.device("cpu")))
+
+
 def _segmenter(loader: FakeSegmentationModelLoader) -> SegFormerSegmenter:
     return SegFormerSegmenter(SegmentationSettings(), DeviceManager(DevicePreference.CPU), loader)
 
@@ -331,9 +351,11 @@ MESSAGES = {
     27: _m27_image_not_saved,
     28: _m28_nothing_to_export,
     29: _m29_unexpected_failure,
+    30: _m30_depth_model_download_failed,
+    31: _m31_segmentation_model_download_failed,
 }
 
-_NEEDS_TMP_PATH = {16, 17, 21, 22, 25, 26, 27, 28}
+_NEEDS_TMP_PATH = {16, 17, 21, 22, 25, 26, 27, 28, 30, 31}
 _NEEDS_QT = {28, 29}
 
 

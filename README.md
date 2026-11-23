@@ -205,8 +205,14 @@ Sin GPU la aplicación funciona igual en CPU y avisa que el proceso puede tardar
 La primera ejecución descarga en `models/weights/` los pesos del modelo de profundidad (unos
 95 MB para la variante *Small*) y los de SegFormer-B4
 (`nvidia/segformer-b4-finetuned-ade-512-512`, unos 490 MB); los tamaños son aproximados, según la
-caché local. Las siguientes ejecuciones los reutilizan; con `local_files_only=True` en la
-configuración no se accede a la red.
+caché local. La aplicación busca siempre primero esos archivos locales, sin conectarse a la red:
+si ya están guardados, ninguna ejecución vuelve a acceder a internet. Solo si faltan, y solo con
+`local_files_only=False` (el valor por defecto), los descarga una vez. Con
+`local_files_only=True` nunca se accede a la red y, si faltan, se informa que los archivos del
+modelo deben estar en el equipo. Para poder funcionar sin conexión, mientras carga los modelos la
+aplicación desactiva la consulta automática que `transformers` hace en internet sobre la
+conversión de pesos antiguos (`.bin`) al formato safetensors (variable
+`DISABLE_SAFETENSORS_CONVERSION`; si ya está definida, se respeta su valor).
 
 Revise la licencia de cada checkpoint en su ficha de Hugging Face antes de un uso comercial:
 la variante *Small* se distribuye bajo Apache-2.0 y las variantes *Base* y *Large* bajo
