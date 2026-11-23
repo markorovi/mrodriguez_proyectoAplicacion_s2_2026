@@ -736,3 +736,31 @@ def test_downscale_keeps_proportions_and_never_enlarges():
     small = _photo(100, 50)
     assert downscale(small, max_side=320) is small
     assert downscale(_photo(480, 640), max_height=160).shape[:2] == (160, 120)
+
+
+# --- Small fixes (PROMPT 16) ----------------------------------------------------------------------
+
+
+def test_new_photo_replaces_the_photo_rejected_as_not_indoor(window):
+    from ui.image_status import ImageStatus
+
+    main = window()
+    main.load_files([BEFORE, MOVED])
+    before, after = main.selection_panel.before_slot, main.selection_panel.after_slot
+    # The analysis flags only "Antes" as an outdoor scene; the photo stays visible until replaced.
+    main.selection_panel.mark_not_indoor({"Antes": 90.0})
+    assert before.status is ImageStatus.NOT_INDOOR and before.acquired is not None
+
+    main.load_files([LOW_LIGHT])
+
+    assert before.acquired.image.source.endswith("scene_low_light.png")
+    assert before.status is ImageStatus.LOW_LIGHT
+    assert after.acquired.image.source.endswith("scene_after_moved.png")
+    assert main.can_analyze
+
+
+def test_report_export_error_belongs_to_the_domain_error_family():
+    from models import SceneDiffError
+    from ui.report_export import ReportExportError
+
+    assert issubclass(ReportExportError, SceneDiffError)

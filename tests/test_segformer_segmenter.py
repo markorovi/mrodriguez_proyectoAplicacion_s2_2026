@@ -96,7 +96,7 @@ def test_non_rgb_input_is_rejected():
 
 def test_runtime_failure_is_reported_as_segmentation_error(scene_image):
     segmenter = _segmenter(FakeSegmentationModelLoader(FailingSegformerModel()))
-    with pytest.raises(SegmentationError, match="tarjeta gráfica"):
+    with pytest.raises(SegmentationError, match="mucha memoria"):
         segmenter.segment(scene_image)
 
 
@@ -188,3 +188,44 @@ def test_template_rejects_an_output_of_the_wrong_resolution():
 
     with pytest.raises(SegmentationError, match="reinicie la aplicación"):
         probe.segment(ImageData(np.zeros((64, 64, 3), np.uint8), "tiny"))
+
+
+# --- Inference failure message depends on the device (PROMPT 16) ----------------------------------
+
+from typing import Optional  # noqa: E402
+
+from services.inference import ComputeDevice  # noqa: E402
+from tests.jargon import jargon_found  # noqa: E402
+
+GPU_SEGMENTATION_FAILURE_MESSAGE = (
+    "No se pudieron identificar los objetos de la imagen. "
+    "Cierre otras aplicaciones que usen la tarjeta gráfica e intente de nuevo."
+)
+
+
+class _FailingOnGpuSegmenter(_ProbeSegmenter):
+    """Like the probe, but on a (simulated) CUDA device and failing every inference."""
+
+    def __init__(self) -> None:
+        def failing(rgb):
+            raise RuntimeError("CUDA out of memory")
+
+        super().__init__(failing)
+
+    @property
+    def compute_device(self) -> Optional[ComputeDevice]:
+        return ComputeDevice(torch.device("cuda"), "GPU de prueba")
+
+
+def test_segmentation_failure_message_names_the_graphics_card_only_on_gpu(scene_image):
+    cpu = _segmenter(FakeSegmentationModelLoader(FailingSegformerModel()))
+    with pytest.raises(SegmentationError) as on_cpu:
+        cpu.segment(scene_image)
+    with pytest.raises(SegmentationError) as on_gpu:
+        _FailingOnGpuSegmenter().segment(scene_image)
+
+    cpu_text, gpu_text = str(on_cpu.value), str(on_gpu.value)
+    assert "tarjeta" not in cpu_text
+    assert "mucha memoria" in cpu_text
+    assert gpu_text == GPU_SEGMENTATION_FAILURE_MESSAGE
+    assert jargon_found(cpu_text) == [] and jargon_found(gpu_text) == []

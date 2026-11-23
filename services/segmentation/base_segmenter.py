@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from time import perf_counter
-from typing import Mapping
+from typing import Mapping, Optional
 
 import numpy as np
 
 from models.exceptions import SegmentationError
 from models.image_data import ImageData
 from models.segmentation_mask import SegmentationMask
+from services.inference.base_estimator import busy_resource
+from services.inference.compute_device import ComputeDevice
 from services.segmentation.region_labeler import structural_class_ids
 
 
@@ -46,6 +48,11 @@ class BaseSegmenter(ABC):
     def device_name(self) -> str:
         """Hardware the model runs on, or an empty string before loading."""
 
+    @property
+    def compute_device(self) -> Optional[ComputeDevice]:
+        """Selected hardware, or None when it is not known (before loading, or a simple double)."""
+        return None
+
     @abstractmethod
     def load(self) -> None:
         """Bring the model into memory on the selected device."""
@@ -78,7 +85,7 @@ class BaseSegmenter(ABC):
         except (RuntimeError, ValueError) as exc:
             raise SegmentationError(
                 "No se pudieron identificar los objetos de la imagen. "
-                "Cierre otras aplicaciones que usen la tarjeta gráfica e intente de nuevo."
+                f"Cierre otras aplicaciones que usen {busy_resource(self.compute_device)} e intente de nuevo."
             ) from exc
         elapsed = perf_counter() - start
 

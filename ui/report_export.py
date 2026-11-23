@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Union
 
 from models.comparison_report import ComparisonReport
+from models.exceptions import SceneDiffError
 from ui import report_text
 from ui.qt_image import to_qimage
 
@@ -17,7 +18,7 @@ SUMMARY_FORMATS = (".txt", ".json")
 _OTHER_IMAGE_SUFFIXES = (".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp", ".gif")
 
 
-class ReportExportError(Exception):
+class ReportExportError(SceneDiffError):
     """The report files could not be written; the message is meant for the user."""
 
 

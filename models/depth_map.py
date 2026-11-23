@@ -37,10 +37,6 @@ class DepthMap:
     def max_depth(self) -> float:
         return float(np.max(self.values))
 
-    @property
-    def depth_range(self) -> float:
-        return self.max_depth - self.min_depth
-
     def depth_at(self, u: int, v: int) -> float:
         """Depth at column ``u`` and row ``v``."""
         return float(self.values[v, u])

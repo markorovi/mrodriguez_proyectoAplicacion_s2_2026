@@ -198,10 +198,6 @@ class MainWindow(QMainWindow):
         """Load an example pair as "before" and "after", exactly like choosing both files by hand."""
         self.load_files([entry.before_path, entry.after_path])
 
-    @property
-    def example_actions(self) -> list[QAction]:
-        return list(self._example_actions)
-
     def capture_photo(self) -> None:
         """Capture with the selected camera into the next empty panel."""
         if self.is_analyzing:
@@ -319,8 +315,14 @@ class MainWindow(QMainWindow):
             self.new_analysis()
 
     def _next_slot(self) -> ImageSlotWidget:
-        before = self._panel.before_slot
-        return before if before.acquired is None else self._panel.after_slot
+        """The first panel without a usable photo (empty, or rejected as not indoor); else "after".
+
+        A photo rejected by the analysis stays visible but unusable, so a new photo replaces it.
+        """
+        for slot in (self._panel.before_slot, self._panel.after_slot):
+            if slot.acquired is None or not slot.status.is_usable:
+                return slot
+        return self._panel.after_slot
 
     def _choose_files(self) -> None:
         extensions = " ".join(f"*{ext}" for ext in self._settings.image.allowed_extensions)

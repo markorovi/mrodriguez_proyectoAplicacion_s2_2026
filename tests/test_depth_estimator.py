@@ -145,3 +145,58 @@ def test_hugging_face_loader_reports_missing_weights(tmp_path):
     loader = HuggingFaceDepthModelLoader(tmp_path, local_files_only=True)
     with pytest.raises(ModelLoadError):
         loader.load("depth-anything/does-not-exist", DeviceManager(DevicePreference.CPU).select().torch_device)
+
+
+# --- Inference failure message depends on the device (PROMPT 16) ----------------------------------
+
+from typing import Optional  # noqa: E402
+
+import torch  # noqa: E402
+
+from services.inference import BaseDepthEstimator, ComputeDevice  # noqa: E402
+from tests.jargon import jargon_found  # noqa: E402
+
+GPU_FAILURE_MESSAGE = (
+    "No se pudo calcular la profundidad de la imagen. "
+    "Cierre otras aplicaciones que usen la tarjeta gráfica e intente de nuevo."
+)
+
+
+class _FailingOnGpuEstimator(BaseDepthEstimator):
+    """Reports a CUDA device and fails every inference, without touching any real GPU."""
+
+    name = "probe"
+    is_metric = True
+    is_loaded = True
+    device_name = "GPU de prueba"
+
+    @property
+    def compute_device(self) -> Optional[ComputeDevice]:
+        return ComputeDevice(torch.device("cuda"), "GPU de prueba")
+
+    def load(self) -> None:
+        pass
+
+    def unload(self) -> None:
+        pass
+
+    def _predict(self, rgb: np.ndarray) -> np.ndarray:
+        raise RuntimeError("CUDA out of memory")
+
+
+def test_inference_failure_message_names_the_graphics_card_only_on_gpu(scene_image):
+    cpu = DepthAnythingV2Estimator(
+        DepthSettings(),
+        device_manager=DeviceManager(DevicePreference.CPU),
+        model_loader=FakeModelLoader(model=FailingDepthModel()),
+    )
+    with pytest.raises(DepthEstimationError) as on_cpu:
+        cpu.estimate(scene_image)
+    with pytest.raises(DepthEstimationError) as on_gpu:
+        _FailingOnGpuEstimator().estimate(scene_image)
+
+    cpu_text, gpu_text = str(on_cpu.value), str(on_gpu.value)
+    assert "tarjeta" not in cpu_text
+    assert "mucha memoria" in cpu_text
+    assert gpu_text == GPU_FAILURE_MESSAGE
+    assert jargon_found(cpu_text) == [] and jargon_found(gpu_text) == []

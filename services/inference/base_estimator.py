@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from time import perf_counter
+from typing import Optional
 
 import numpy as np
 
 from models.depth_map import DepthMap
 from models.exceptions import DepthEstimationError
 from models.image_data import ImageData
+from services.inference.compute_device import ComputeDevice
 
 
 class BaseDepthEstimator(ABC):
@@ -45,6 +47,11 @@ class BaseDepthEstimator(ABC):
     def device_name(self) -> str:
         """Hardware the model runs on, or an empty string before loading."""
 
+    @property
+    def compute_device(self) -> Optional[ComputeDevice]:
+        """Selected hardware, or None when it is not known (before loading, or a simple double)."""
+        return None
+
     @abstractmethod
     def load(self) -> None:
         """Bring the model into memory on the selected device."""
@@ -71,7 +78,7 @@ class BaseDepthEstimator(ABC):
         except (RuntimeError, ValueError) as exc:
             raise DepthEstimationError(
                 "No se pudo calcular la profundidad de la imagen. "
-                "Cierre otras aplicaciones que usen la tarjeta gráfica e intente de nuevo."
+                f"Cierre otras aplicaciones que usen {busy_resource(self.compute_device)} e intente de nuevo."
             ) from exc
         elapsed = perf_counter() - start
 
@@ -102,3 +109,13 @@ class BaseDepthEstimator(ABC):
             raise DepthEstimationError(
                 "La profundidad solo se puede calcular en una foto a color común."
             )
+
+
+def busy_resource(device: Optional[ComputeDevice]) -> str:
+    """What other applications may be exhausting: memory on the CPU, the graphics card otherwise.
+
+    An unknown device keeps the graphics-card wording, which was the only one before.
+    """
+    if device is not None and not device.is_accelerated:
+        return "mucha memoria"
+    return "la tarjeta gráfica"

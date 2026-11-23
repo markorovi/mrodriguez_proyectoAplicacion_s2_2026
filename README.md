@@ -318,10 +318,16 @@ la webcam), la numeración depende del sistema operativo. Pruebe con 0, 1, 2... 
 # Pruebas unitarias (rápidas, sin red, GPU ni cámara; la interfaz se prueba sin ventana)
 pytest
 
-# Pruebas de integración con el modelo real (descargan los pesos la primera vez)
+# Pruebas de integración con el modelo real (usan los pesos guardados; solo descargan si faltan)
 RUN_INTEGRATION=1 pytest -m integration -v -s           # bash
 $env:RUN_INTEGRATION=1; pytest -m integration -v -s     # PowerShell
 ```
+
+Las pruebas de integración cargan primero los pesos guardados en `models/weights/` y solo los
+descargan si faltan y el ajuste `local_files_only` lo permite. La prueba de escenas interiores con
+los modelos reales ([tests/test_indoor_real_integration.py](tests/test_indoor_real_integration.py))
+y la de carga sin conexión ([tests/test_model_loading_local_first.py](tests/test_model_loading_local_first.py),
+que bloquea la red) corren siempre sin red.
 
 Las pruebas de integración del pipeline ([tests/test_pipeline_integration.py](tests/test_pipeline_integration.py))
 ejecutan el análisis completo con los modelos reales sobre los pares de muestra (caja movida,
