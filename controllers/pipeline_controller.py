@@ -95,7 +95,9 @@ class PipelineController:
             segmenter = create_segmenter(s.segmentation)
         self._segmenter = segmenter if s.segmentation.enabled else None
         self._labeler = RegionLabeler(
-            s.segmentation.min_label_coverage, max_outdoor_percent=s.segmentation.max_outdoor_percent
+            s.segmentation.min_label_coverage,
+            max_outdoor_percent=s.segmentation.max_outdoor_percent,
+            min_label_confidence=s.segmentation.min_label_confidence,
         )
         self._comparator = comparator or SpatialComparisonService(
             s.comparison, self._labeler, DeviceManager(s.depth.device)

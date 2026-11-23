@@ -31,7 +31,8 @@ class SegFormerSegmenter(BaseSegmenter):
 
     The model predicts class scores at a quarter of its input resolution;
     they are upsampled bilinearly on the inference device and reduced with
-    an arg-max there, so only the compact id map travels back to the host.
+    an arg-max there, so only the compact id map and the per-pixel
+    confidence (the largest softmax probability) travel back to the host.
     On CUDA, inference runs under float16 autocast when
     ``settings.half_precision`` is enabled.
 
@@ -85,6 +86,16 @@ class SegFormerSegmenter(BaseSegmenter):
             self._device_manager.release(self._device)
 
     def _predict(self, rgb: np.ndarray) -> np.ndarray:
+        return self._predict_with_confidence(rgb)[0]
+
+    def _predict_with_confidence(self, rgb: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Class ids and their softmax probability, both from one pass of the model.
+
+        The confidence of a pixel is the largest softmax probability over the
+        classes, computed from the same upsampled scores as the arg-max
+        (``1 / sum(exp(score - max score))``, in place so no second score
+        tensor is allocated) and resized bilinearly to the input resolution.
+        """
         assert self._bundle is not None and self._device is not None
         processor, model = self._bundle
         inputs = processor(images=rgb, return_tensors="pt")
@@ -99,9 +110,12 @@ class SegFormerSegmenter(BaseSegmenter):
         with torch.inference_mode():
             upsampled = F.interpolate(logits.float(), size=work_size, mode="bilinear", align_corners=False)
             class_ids = upsampled.argmax(dim=1)[0].to(torch.int32).cpu().numpy()
+            upsampled.sub_(upsampled.amax(dim=1, keepdim=True)).exp_()
+            confidence = upsampled.sum(dim=1)[0].reciprocal_().cpu().numpy().astype(np.float32, copy=False)
         if work_size != (height, width):
             class_ids = cv2.resize(class_ids, (width, height), interpolation=cv2.INTER_NEAREST)
-        return class_ids
+            confidence = cv2.resize(confidence, (width, height), interpolation=cv2.INTER_LINEAR)
+        return class_ids, np.clip(confidence, 0.0, 1.0, out=confidence)
 
     def _autocast(self) -> AbstractContextManager:
         if self._device is not None and self._device.is_accelerated and self._settings.half_precision:

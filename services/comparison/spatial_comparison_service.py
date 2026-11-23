@@ -592,12 +592,17 @@ class SpatialComparisonService:
 
         # The object is visible in "before" over its old footprint and in
         # "after" over its new one; it is named from whichever view the
-        # segmentation recognizes it best.
+        # segmentation recognizes it best. Only this displayed name applies the
+        # confidence rule; persistence and pairing by label compare classes.
         labels = []
         if candidate.before:
-            labels.append(self._labeler.describe(segmentation_before, _union_mask(candidate.before)))
+            labels.append(
+                self._labeler.describe(segmentation_before, _union_mask(candidate.before), apply_confidence=True)
+            )
         if candidate.after:
-            labels.append(self._labeler.describe(segmentation_after, _union_mask(candidate.after)))
+            labels.append(
+                self._labeler.describe(segmentation_after, _union_mask(candidate.after), apply_confidence=True)
+            )
         label = max(labels, key=lambda item: (item.is_identified, item.coverage))
 
         position_before = candidate.before[0].centroid if candidate.before else None

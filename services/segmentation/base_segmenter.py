@@ -25,7 +25,9 @@ class BaseSegmenter(ABC):
     times the inference, verifies the output resolution and wraps runtime
     failures (for example, running out of GPU memory) in
     :class:`SegmentationError`. Subclasses only implement :meth:`_predict`,
-    :meth:`_class_names` and the model life cycle, so another segmentation
+    :meth:`_class_names` and the model life cycle (and may override
+    :meth:`_predict_with_confidence` to report how sure the model is of each
+    pixel), so another segmentation
     model can replace the current one without touching the modules that use
     the mask (see :func:`services.segmentation.segmenter_factory.create_segmenter`).
 
@@ -65,6 +67,14 @@ class BaseSegmenter(ABC):
     def _predict(self, rgb: np.ndarray) -> np.ndarray:
         """Return the ``H x W`` class-id map of an ``H x W x 3`` uint8 RGB array."""
 
+    def _predict_with_confidence(self, rgb: np.ndarray) -> tuple[np.ndarray, Optional[np.ndarray]]:
+        """Class-id map and, when the model can tell, the ``H x W`` confidence (0-1) of each pixel.
+
+        The default reports no confidence; a subclass whose model gives class
+        probabilities overrides it so the mask carries them.
+        """
+        return self._predict(rgb), None
+
     @abstractmethod
     def _class_names(self) -> Mapping[int, str]:
         """Name of every class id the loaded model can predict."""
@@ -79,7 +89,7 @@ class BaseSegmenter(ABC):
 
         start = perf_counter()
         try:
-            class_ids = self._predict(pixels)
+            class_ids, confidence = self._predict_with_confidence(pixels)
         except SegmentationError:
             raise
         except (RuntimeError, ValueError) as exc:
@@ -89,7 +99,8 @@ class BaseSegmenter(ABC):
             ) from exc
         elapsed = perf_counter() - start
 
-        if class_ids.shape != (image.height, image.width):
+        expected = (image.height, image.width)
+        if class_ids.shape != expected or (confidence is not None and confidence.shape != expected):
             raise SegmentationError(
                 "No se pudieron identificar los objetos de la imagen. "
                 "Intente de nuevo; si el problema continúa, reinicie la aplicación."
@@ -103,6 +114,7 @@ class BaseSegmenter(ABC):
             device=self.device_name,
             inference_seconds=elapsed,
             ignored_class_ids=structural_class_ids(id2label),
+            confidence=confidence,
         )
 
     def __enter__(self) -> BaseSegmenter:

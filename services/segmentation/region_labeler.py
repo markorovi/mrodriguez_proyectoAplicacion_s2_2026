@@ -138,6 +138,13 @@ class RegionLabeler:
     covers at least ``min_coverage`` of it and that class has a known
     translation; otherwise it is an unidentified object.
 
+    Names meant for display (``describe(..., apply_confidence=True)``) are
+    also withheld when the model's mean confidence in that class is below
+    ``min_label_confidence``: a small object the model does not know gets the
+    closest of its classes (a mug read as a bag), and showing it as
+    unidentified is better than a wrong name. Callers that compare regions
+    (persistence, pairing by label) keep the default and are not affected.
+
     It also tells whether a whole photo shows an indoor scene
     (:meth:`validate_indoor_scene`).
     """
@@ -147,14 +154,18 @@ class RegionLabeler:
         min_coverage: float = 0.25,
         names: Mapping[str, str] = ADE20K_SPANISH_NAMES,
         max_outdoor_percent: float = MAX_OUTDOOR_PERCENT,
+        min_label_confidence: float = 0.76,
     ) -> None:
         if not 0.0 < min_coverage <= 1.0:
             raise ValueError("Minimum coverage must be in (0, 1].")
         if not 0.0 <= max_outdoor_percent <= 100.0:
             raise ValueError("Maximum outdoor percentage must be in [0, 100].")
+        if not 0.0 <= min_label_confidence <= 1.0:
+            raise ValueError("Minimum label confidence must be in [0, 1].")
         self._min_coverage = min_coverage
         self._names = {normalize_class_name(key): value for key, value in names.items()}
         self._max_outdoor_percent = max_outdoor_percent
+        self._min_label_confidence = min_label_confidence
 
     def validate_indoor_scene(
         self, mask: SegmentationMask, region: Optional[np.ndarray] = None
@@ -174,14 +185,26 @@ class RegionLabeler:
         percent = 100.0 * float(np.count_nonzero(outdoor)) / ids.size
         return percent <= self._max_outdoor_percent, percent
 
-    def describe(self, mask: Optional[SegmentationMask], region: np.ndarray) -> SemanticLabel:
+    def describe(
+        self, mask: Optional[SegmentationMask], region: np.ndarray, apply_confidence: bool = False
+    ) -> SemanticLabel:
+        """Name of the object class that dominates ``region``.
+
+        When the mask carries the model's confidence, the label reports its
+        mean over the pixels of that class. With ``apply_confidence`` (only
+        for the name shown to the user), a class below
+        ``min_label_confidence`` gives an unidentified object; the default
+        leaves the result as it is without the confidence rule.
+        """
         if mask is None:
             return SemanticLabel(UNIDENTIFIED_LABEL)
         class_id, coverage = mask.dominant_class(region)
         if class_id is None or coverage < self._min_coverage:
             return SemanticLabel(UNIDENTIFIED_LABEL, coverage=coverage)
+        confidence = mask.class_confidence(region, class_id)
         class_name = normalize_class_name(mask.id2label.get(class_id, ""))
         spanish = self._names.get(class_name)
-        if spanish is None:
-            return SemanticLabel(UNIDENTIFIED_LABEL, coverage=coverage)
-        return SemanticLabel(spanish, class_name=class_name, coverage=coverage)
+        doubtful = apply_confidence and confidence is not None and confidence < self._min_label_confidence
+        if spanish is None or doubtful:
+            return SemanticLabel(UNIDENTIFIED_LABEL, coverage=coverage, confidence=confidence)
+        return SemanticLabel(spanish, class_name=class_name, coverage=coverage, confidence=confidence)

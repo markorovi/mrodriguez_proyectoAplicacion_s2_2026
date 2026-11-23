@@ -39,6 +39,17 @@ class SegmentationSettings(BaseModel):
         le=1.0,
         description="Fraction of a region a class must cover to name the object after it.",
     )
+    min_label_confidence: float = Field(
+        default=0.76,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Mean model confidence (0-1) a changed object's class needs for its name to be shown; "
+            "below it the object is shown as unidentified. Only the displayed name depends on it. "
+            "Measured on the three real pairs: wrong names reached 0.72 at most, right ones 0.80 "
+            "at least (0 turns the rule off)."
+        ),
+    )
     check_indoor_scene: bool = Field(
         default=True,
         description="Reject a photo whose segmentation shows mostly open-air scenery (sky, trees, grass...).",

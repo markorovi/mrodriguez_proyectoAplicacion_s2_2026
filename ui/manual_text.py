@@ -284,10 +284,10 @@ def _limitations() -> ManualSection:
         title="Limitaciones",
         bullets=(
             "Está pensada solo para espacios interiores.",
-            "Los nombres de los objetos se limitan a las categorías que el sistema conoce. Un objeto "
-            "pequeño puede recibir el nombre de algo parecido (por ejemplo, una taza puede aparecer "
-            "como «vaso» o «bolso», y un cubo como «caja»), y un objeto que no reconoce aparece como "
-            f"«{UNIDENTIFIED_LABEL}».",
+            "Los nombres de los objetos se limitan a las categorías que el sistema conoce. Cuando no "
+            "está seguro de qué objeto es (por ejemplo, una taza o un cubo pequeño), lo muestra como "
+            f"«{UNIDENTIFIED_LABEL}» en lugar de darle un nombre equivocado; aun así, algún objeto "
+            "pequeño todavía puede recibir el nombre de algo parecido.",
             "Las distancias son aproximadas, sobre todo cuando la foto no trae los datos de la cámara.",
             "Se ha probado sobre todo con la cámara fija; con la cámara en la mano la comparación se ha "
             "probado menos.",
