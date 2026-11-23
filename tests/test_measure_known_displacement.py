@@ -146,7 +146,7 @@ def test_script_measures_synthetic_photos_without_writing_into_the_samples(tmp_p
 
 def test_json_inside_the_samples_folder_is_refused(tmp_path, capsys):
     target = SAMPLES_DIR / "no_debe_existir.json"
-    code = main(["--folder", str(tmp_path), "--count", "2", "--json", str(target)])
+    code = main(["--folder", str(tmp_path), "--count", "2", "--step-cm", "19.8", "--json", str(target)])
 
     assert code == 1
     assert not target.exists()
@@ -154,5 +154,45 @@ def test_json_inside_the_samples_folder_is_refused(tmp_path, capsys):
 
 
 def test_missing_photo_is_reported(tmp_path, capsys):
-    assert main(["--folder", str(tmp_path), "--count", "2"]) == 1
+    assert main(["--folder", str(tmp_path), "--count", "2", "--step-cm", "19.8"]) == 1
     assert "pos1" in capsys.readouterr().err
+
+
+# --- The step has no default (PROMPT 24): 5.6 cm was the spacer, the box moved 19.8 cm ---------------
+
+
+def test_step_is_required(tmp_path, capsys):
+    with pytest.raises(SystemExit) as stopped:
+        main(["--folder", str(tmp_path), "--count", "2"])
+
+    assert stopped.value.code == 2
+    assert "--step-cm" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("step", ["0", "-5.6"])
+def test_step_must_be_positive(tmp_path, capsys, step):
+    with pytest.raises(SystemExit) as stopped:
+        main(["--folder", str(tmp_path), "--count", "2", f"--step-cm={step}"])
+
+    assert stopped.value.code == 2
+    assert "mayor que cero" in capsys.readouterr().err
+
+
+def test_step_used_is_printed_and_saved(tmp_path, capsys):
+    photos = tmp_path / "fotos"
+    photos.mkdir()
+    builder = SyntheticSceneBuilder(640, 480, seed=7)
+    for n, x in enumerate((0.3, 0.6), start=1):
+        Image.fromarray(builder.render([SceneObject(center_x=x)])).save(photos / f"pos{n}.png")
+    out = tmp_path / "medicion.json"
+
+    def controller():
+        return PipelineController(AppSettings(), depth_estimator=SceneDepthEstimator(), segmenter=SceneSegmenter())
+
+    code = main(["--folder", str(photos), "--count", "2", "--step-cm", "19.8", "--json", str(out)], controller)
+
+    assert code == 0
+    assert "Paso real usado (--step-cm): 19.8 cm" in capsys.readouterr().out
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["step_cm"] == 19.8
+    assert data["pairs"][0]["expected_cm"] == pytest.approx(19.8)

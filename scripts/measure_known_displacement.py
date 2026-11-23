@@ -1,13 +1,16 @@
 """Measure a known displacement with the real pipeline (evidence for RF-005).
 
 Usage:
-    python -m scripts.measure_known_displacement [--folder CARPETA] [--step-cm 5.6]
+    python -m scripts.measure_known_displacement --step-cm CM [--folder CARPETA]
                                                  [--count 7] [--pairs {all,consecutive}]
                                                  [--json RUTA]
 
 The folder holds photos ``pos1`` ... ``posN`` (any accepted image extension)
 of the same scene, taken from the same place, in which one object moved
-``step_cm`` between consecutive photos. Every pair ``pos_i`` -> ``pos_j``
+``step_cm`` between consecutive photos. ``--step-cm`` has no default: it is
+the real distance the object moved. When a spacer was placed against the
+object and the object was then set on the spacer's other side, the step is the
+object's width plus the spacer's, not the spacer's alone. Every pair ``pos_i`` -> ``pos_j``
 (``i < j``) is analyzed with one :class:`PipelineController`, so the models
 load once, and the distance measured for the displaced object is compared with
 the expected ``step_cm * (j - i)``.
@@ -39,8 +42,11 @@ from config.settings import AppSettings
 from controllers.pipeline_controller import PipelineController
 from models.comparison_report import ChangedObject, ChangeType
 
-DEFAULT_STEP_CM = 5.6
 DEFAULT_COUNT = 7
+STEP_HELP = (
+    "distancia real que se movió el objeto entre posiciones consecutivas, en cm; si se usó un "
+    "espaciador, es el ancho del objeto más el del espaciador, no solo el del espaciador"
+)
 PHOTO_PREFIX = "pos"
 
 MEASURED = "medido"
@@ -305,13 +311,16 @@ def _inside(path: Path, folder: Path) -> bool:
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Mide con el análisis real un desplazamiento conocido (RF-005).")
     parser.add_argument("--folder", type=Path, default=SAMPLES_DIR, help="Carpeta con pos1 ... posN.")
-    parser.add_argument("--step-cm", type=float, default=DEFAULT_STEP_CM, help="Desplazamiento entre fotos consecutivas.")
+    parser.add_argument("--step-cm", type=float, required=True, metavar="CM", help=STEP_HELP)
     parser.add_argument("--count", type=int, default=DEFAULT_COUNT, help="Número de fotos (pos1 ... posN).")
     parser.add_argument("--pairs", choices=["all", "consecutive"], default="all")
     parser.add_argument("--json", type=Path, default=None, help="Archivo JSON de salida, fuera de data/samples.")
     args = parser.parse_args(list(argv))
-    if args.step_cm <= 0:
-        parser.error("--step-cm debe ser positivo.")
+    if not args.step_cm > 0:
+        parser.error(
+            f"--step-cm debe ser mayor que cero (se recibió {args.step_cm:g}): "
+            "es la distancia real que se movió el objeto."
+        )
     return args
 
 
@@ -338,8 +347,8 @@ def _num(value: Optional[float], digits: int = 2) -> str:
 
 def format_report(measurement: Measurement) -> str:
     lines = [
-        f"Desplazamiento conocido: {measurement.step_cm} cm por paso, {measurement.count} fotos, "
-        f"pares: {measurement.pairs_mode} ({len(measurement.results)}).",
+        f"Paso real usado (--step-cm): {measurement.step_cm:g} cm entre posiciones consecutivas; "
+        f"{measurement.count} fotos, pares: {measurement.pairs_mode} ({len(measurement.results)}).",
         "",
         "| Par | k | Esperado (cm) | Medido (cm) | Error (cm) | |Error| (cm) | Error rel. (%) | Estado | Etiqueta | Tipo | Cámara |",
         "|---|---|---|---|---|---|---|---|---|---|---|",
