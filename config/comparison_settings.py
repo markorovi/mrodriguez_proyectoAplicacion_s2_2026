@@ -77,6 +77,14 @@ class ComparisonSettings(BaseModel):
         default=True,
         description="Pair leftover regions recognized as the same kind of object (an object that turned while moving).",
     )
+    pair_leftover_by_tracking: bool = Field(
+        default=True,
+        description=(
+            "Pair the only unexplained vacated region with the only unexplained, non-persistent occupied "
+            "region when keypoints that move with the object confirm it (an object whose colors change "
+            "between views)."
+        ),
+    )
     track_displaced_objects: bool = Field(
         default=True,
         description="Measure displacements by matching keypoints of the object instead of region centroids.",

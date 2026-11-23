@@ -117,7 +117,11 @@ class SpatialComparisonService:
        bed is still a bed): its depth step is an estimation artifact, and such
        regions are never offered as partners when splitting or pairing. With ``pair_by_label``, unexplained regions named as the
        same kind of object in their respective views are paired as a
-       displacement: an object that turned shows other faces and colors;
+       displacement: an object that turned shows other faces and colors.
+       With ``pair_leftover_by_tracking``, when exactly one vacated and one
+       occupied region are still unexplained, of comparable size, and the
+       occupied one is not persistent, they are paired if keypoints that
+       move with the object confirm it;
     5. with ``track_displaced_objects``, measures a displacement by following
        the object itself: SIFT keypoints inside the object's area are matched
        between the aligned views, the static ones are discarded and the
@@ -319,6 +323,9 @@ class SpatialComparisonService:
                 leftovers, segmentation_before, segmentation_after, artifacts
             )
             candidates += label_pairs
+        if self._settings.pair_leftover_by_tracking:
+            tracked_pairs, leftovers = self._pair_leftover_by_tracking(leftovers, views, artifacts)
+            candidates += tracked_pairs
         # Strongest evidence first, so it becomes the primary region of its
         # object: estimation artifacts are weaker depth steps than real objects.
         leftovers.sort(key=lambda item: abs(item[0].mean_change_m) * item[0].area, reverse=True)
@@ -394,6 +401,33 @@ class SpatialComparisonService:
                 candidates.append(_Candidate(ChangeType.DISPLACED, [leftovers[i][0]], [leftovers[j][0]]))
                 used.update((i, j))
         return candidates, [item for k, item in enumerate(leftovers) if k not in used]
+
+    def _pair_leftover_by_tracking(
+        self, leftovers: list[tuple[_Region, bool]], views: _Views, artifacts: set[int]
+    ) -> tuple[list[_Candidate], list[tuple[_Region, bool]]]:
+        """Pair the only unexplained vacated region with the only unexplained occupied one, if tracking confirms it.
+
+        An object whose colors change between views (other faces, other light)
+        fails the color pairing and, when the segmentation does not know it,
+        the pairing by label. When exactly one vacated and one occupied region
+        are left, of comparable size, they are one displaced object only if
+        keypoints that move with it confirm it (:meth:`_track`). The vacated
+        region may look persistent (the surface it reveals can get the class
+        the model gave the object), but the occupied one must not: an occupied
+        region showing the same thing in both views is an estimation artifact,
+        not the place an object arrived at.
+        """
+        vacated = [region for region, is_vacated in leftovers if is_vacated]
+        occupied = [region for region, is_vacated in leftovers if not is_vacated]
+        if len(vacated) != 1 or len(occupied) != 1 or id(occupied[0]) in artifacts:
+            return [], leftovers
+        old, new = vacated[0], occupied[0]
+        if max(old.area, new.area) / min(old.area, new.area) > self._settings.pairing_max_area_ratio:
+            return [], leftovers
+        candidate = _Candidate(ChangeType.DISPLACED, [old], [new])
+        if self._track(candidate, views) is None:
+            return [], leftovers
+        return [candidate], []
 
     def _merge_reach(self, image: ImageData) -> int:
         """Largest gap (px) between two regions that still makes them one object."""
