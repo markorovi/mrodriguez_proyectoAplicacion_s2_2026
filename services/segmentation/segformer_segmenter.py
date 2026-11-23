@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from contextlib import AbstractContextManager, nullcontext
-from time import perf_counter
 from typing import Optional
 
 import cv2
@@ -12,17 +11,14 @@ import torch
 import torch.nn.functional as F
 
 from config.segmentation_settings import SegmentationSettings
-from models.exceptions import SegmentationError
-from models.image_data import ImageData
-from models.segmentation_mask import SegmentationMask
 from services.inference.compute_device import ComputeDevice
 from services.inference.device_manager import DeviceManager
+from services.segmentation.base_segmenter import BaseSegmenter
 from services.segmentation.model_loader import (
     HuggingFaceSegmentationModelLoader,
     SegmentationModelBundle,
     SegmentationModelLoader,
 )
-from services.segmentation.region_labeler import structural_class_ids
 
 # Class scores are upsampled to at most this side before taking the arg-max;
 # the resulting ids are then resized (nearest) to the full resolution. This
@@ -30,7 +26,7 @@ from services.segmentation.region_labeler import structural_class_ids
 _MAX_LOGITS_SIDE = 1024
 
 
-class SegFormerSegmenter:
+class SegFormerSegmenter(BaseSegmenter):
     """Adapter from a Hugging Face SegFormer model to a per-pixel class mask.
 
     The model predicts class scores at a quarter of its input resolution;
@@ -39,8 +35,9 @@ class SegFormerSegmenter:
     On CUDA, inference runs under float16 autocast when
     ``settings.half_precision`` is enabled.
 
-    Like the depth estimators, the segmenter loads lazily on first use and
-    is a context manager that frees the model on exit.
+    Input checks, lazy loading, timing and error wrapping come from the
+    :meth:`BaseSegmenter.segment` template method; like the depth estimators,
+    the segmenter is a context manager that frees the model on exit.
     """
 
     def __init__(
@@ -87,35 +84,6 @@ class SegFormerSegmenter:
         if self._device is not None:
             self._device_manager.release(self._device)
 
-    def segment(self, image: ImageData) -> SegmentationMask:
-        """Class id of every pixel of ``image`` at its native resolution."""
-        pixels = image.pixels
-        if pixels.dtype != np.uint8 or pixels.ndim != 3 or pixels.shape[2] != 3:
-            raise SegmentationError("Los objetos solo se pueden identificar en una foto a color común.")
-        if not self.is_loaded:
-            self.load()
-        assert self._bundle is not None
-
-        start = perf_counter()
-        try:
-            class_ids = self._predict(pixels)
-        except (RuntimeError, ValueError) as exc:
-            raise SegmentationError(
-                "No se pudieron identificar los objetos de la imagen. "
-                "Cierre otras aplicaciones que usen la tarjeta gráfica e intente de nuevo."
-            ) from exc
-        elapsed = perf_counter() - start
-
-        id2label = {int(k): str(v) for k, v in self._bundle.model.config.id2label.items()}
-        return SegmentationMask(
-            class_ids=class_ids,
-            id2label=id2label,
-            model_name=self.name,
-            device=self.device_name,
-            inference_seconds=elapsed,
-            ignored_class_ids=structural_class_ids(id2label),
-        )
-
     def _predict(self, rgb: np.ndarray) -> np.ndarray:
         assert self._bundle is not None and self._device is not None
         processor, model = self._bundle
@@ -140,9 +108,6 @@ class SegFormerSegmenter:
             return torch.autocast(device_type="cuda", dtype=torch.float16)
         return nullcontext()
 
-    def __enter__(self) -> SegFormerSegmenter:
-        self.load()
-        return self
-
-    def __exit__(self, *exc_info: object) -> None:
-        self.unload()
+    def _class_names(self) -> dict[int, str]:
+        assert self._bundle is not None
+        return {int(k): str(v) for k, v in self._bundle.model.config.id2label.items()}

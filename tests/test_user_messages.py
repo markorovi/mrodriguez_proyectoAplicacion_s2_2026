@@ -273,6 +273,16 @@ def _m31_segmentation_model_download_failed(tmp_path) -> str:
         return _raised(lambda: loader.load(SegmentationSettings().model_id, torch.device("cpu")))
 
 
+def _m32_segmentation_size_mismatch() -> str:
+    from tests.doubles import SceneSegmenter
+
+    class _WrongSizeSegmenter(SceneSegmenter):
+        def _predict(self, rgb: np.ndarray) -> np.ndarray:
+            return np.zeros((8, 8), np.int32)
+
+    return _raised(lambda: _WrongSizeSegmenter().segment(ImageData(np.zeros((480, 640, 3), np.uint8), "foto")))
+
+
 def _segmenter(loader: FakeSegmentationModelLoader) -> SegFormerSegmenter:
     return SegFormerSegmenter(SegmentationSettings(), DeviceManager(DevicePreference.CPU), loader)
 
@@ -353,6 +363,7 @@ MESSAGES = {
     29: _m29_unexpected_failure,
     30: _m30_depth_model_download_failed,
     31: _m31_segmentation_model_download_failed,
+    32: _m32_segmentation_size_mismatch,
 }
 
 _NEEDS_TMP_PATH = {16, 17, 21, 22, 25, 26, 27, 28, 30, 31}

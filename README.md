@@ -40,7 +40,7 @@ servicios, de modo que cada modelo puede sustituirse sin modificar los demás m�
 | `services/capture/` | Fuentes de imagen (`ImageSource`, implementada por `FileImageLoader` y `CameraCapture`) y `ImageAcquisitionService`, que entrega imágenes ya validadas; `ExampleCatalog` lee los ejemplos precargados de `data/samples/examples.json`. |
 | `services/inference/` | `BaseDepthEstimator` (contrato común), `DepthAnythingV2Estimator`, `DeviceManager` (GPU/CPU), cargador de modelos de Hugging Face y `DepthLatencyBenchmark`. |
 | `services/alignment/` | `SpatialAlignmentService`: puntos de interés, emparejamiento, homografía RANSAC y deformación de imagen, profundidad y máscara de solapamiento. |
-| `services/segmentation/` | `SegFormerSegmenter` (GPU/CPU) y `RegionLabeler`, que nombra en español la región de un cambio. |
+| `services/segmentation/` | `BaseSegmenter` (contrato común), `SegFormerSegmenter` (GPU/CPU), la fábrica `create_segmenter`, cargador de modelos de Hugging Face y `RegionLabeler`, que nombra en español la región de un cambio. |
 | `services/comparison/` | `SpatialComparisonService`: diferencia de profundidad, regiones de cambio, retroproyección 3D y clasificación. |
 | `controllers/` | `PipelineController`: orquestación de extremo a extremo (fachada única para la interfaz). |
 | `utils/` | `ImageValidator`, estadísticas fotométricas, geometría pinhole, parámetros de cámara por foto (`camera_model`), calibración con tablero (`camera_calibration`), coloreado de mapas de profundidad, dibujo de los cambios y generador de escenas sintéticas. |
@@ -52,12 +52,18 @@ servicios, de modo que cada modelo puede sustituirse sin modificar los demás m�
 Patrones aplicados:
 
 - **Estrategia**: `BaseDepthEstimator` define `estimate(image) -> DepthMap`; cualquier modelo
-  de profundidad se integra implementando `_predict`, `load` y `unload`.
-- **Método plantilla**: `estimate` valida la entrada, carga el modelo de forma perezosa, mide el
-  tiempo, verifica la resolución de salida y traduce fallos de ejecución (p. ej. memoria de GPU
-  insuficiente) a `DepthEstimationError`.
-- **Adaptador**: `DepthAnythingV2Estimator` adapta el procesador y el modelo de Hugging Face a
-  la interfaz uniforme del estimador.
+  de profundidad se integra implementando `_predict`, `load` y `unload`. Del mismo modo,
+  `BaseSegmenter` define `segment(image) -> SegmentationMask` y un modelo de segmentación se
+  integra implementando `_predict`, `_class_names`, `load` y `unload`.
+- **Método plantilla**: `estimate` y `segment` validan la entrada, cargan el modelo de forma
+  perezosa, miden el tiempo, verifican la resolución de salida y traducen fallos de ejecución
+  (p. ej. memoria de GPU insuficiente) a `DepthEstimationError` o `SegmentationError`.
+- **Fábrica**: `create_depth_estimator` y `create_segmenter` son el único lugar que nombra la
+  clase concreta de cada modelo. `PipelineController` depende solo de `BaseDepthEstimator`,
+  `BaseSegmenter` y esas fábricas, así que cambiar un modelo por una versión más reciente no
+  obliga a modificar el orquestador.
+- **Adaptador**: `DepthAnythingV2Estimator` y `SegFormerSegmenter` adaptan el procesador y el
+  modelo de Hugging Face a la interfaz uniforme del estimador y del segmentador.
 - **Inyección de dependencias**: el dispositivo de video, el selector de hardware, los
   cargadores de modelos y cada servicio del pipeline son reemplazables, lo que permite probar
   cada módulo sin hardware ni descargas.

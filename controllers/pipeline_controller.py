@@ -21,8 +21,9 @@ from services.comparison.spatial_comparison_service import SpatialComparisonServ
 from services.inference.base_estimator import BaseDepthEstimator
 from services.inference.device_manager import DeviceManager
 from services.inference.estimator_factory import create_depth_estimator
+from services.segmentation.base_segmenter import BaseSegmenter
 from services.segmentation.region_labeler import RegionLabeler
-from services.segmentation.segformer_segmenter import SegFormerSegmenter
+from services.segmentation.segmenter_factory import create_segmenter
 from utils.camera_model import resolve_intrinsics
 from utils.change_visualization import draw_changes
 from utils.image_validator import ImageValidator
@@ -77,7 +78,7 @@ class PipelineController:
         acquisition: ImageAcquisitionService | None = None,
         depth_estimator: BaseDepthEstimator | None = None,
         aligner: SpatialAlignmentService | None = None,
-        segmenter: SegFormerSegmenter | None = None,
+        segmenter: BaseSegmenter | None = None,
         comparator: SpatialComparisonService | None = None,
     ) -> None:
         self._settings = settings or AppSettings()
@@ -86,7 +87,7 @@ class PipelineController:
         self._estimator = depth_estimator or create_depth_estimator(s.depth)
         self._aligner = aligner or SpatialAlignmentService(s.alignment)
         if segmenter is None and s.segmentation.enabled:
-            segmenter = SegFormerSegmenter(s.segmentation)
+            segmenter = create_segmenter(s.segmentation)
         self._segmenter = segmenter if s.segmentation.enabled else None
         self._labeler = RegionLabeler(
             s.segmentation.min_label_coverage, max_outdoor_percent=s.segmentation.max_outdoor_percent

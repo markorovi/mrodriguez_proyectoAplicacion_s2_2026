@@ -115,3 +115,76 @@ def test_translations_cover_the_requested_objects():
 
 def test_structural_ids_are_resolved_by_name():
     assert structural_class_ids({0: "wall", 1: "chair", 2: "floor "}) == frozenset({0, 2})
+
+
+# --- Segmenter contract (RA-003): BaseSegmenter template method and the factory -------------------
+
+from services.segmentation import BaseSegmenter, create_segmenter  # noqa: E402
+
+
+class _ProbeSegmenter(BaseSegmenter):
+    """Minimal subclass whose prediction is chosen by each test; counts the loads."""
+
+    def __init__(self, predict) -> None:
+        self._predict_with = predict
+        self._loaded = False
+        self.load_calls = 0
+
+    name = "probe"
+
+    @property
+    def is_loaded(self) -> bool:
+        return self._loaded
+
+    @property
+    def device_name(self) -> str:
+        return "CPU" if self._loaded else ""
+
+    def load(self) -> None:
+        self.load_calls += 1
+        self._loaded = True
+
+    def unload(self) -> None:
+        self._loaded = False
+
+    def _predict(self, rgb: np.ndarray) -> np.ndarray:
+        return self._predict_with(rgb)
+
+    def _class_names(self) -> dict[int, str]:
+        return {0: "wall", 1: "box"}
+
+
+def test_factory_builds_a_segformer_segmenter_behind_the_base_contract():
+    segmenter = create_segmenter()
+    assert isinstance(segmenter, BaseSegmenter)
+    assert isinstance(segmenter, SegFormerSegmenter)
+    assert not segmenter.is_loaded
+
+
+def test_base_segmenter_cannot_be_instantiated():
+    with pytest.raises(TypeError):
+        BaseSegmenter()
+
+
+def test_template_rejects_non_rgb_input_without_loading():
+    probe = _ProbeSegmenter(lambda rgb: np.zeros(rgb.shape[:2], np.int32))
+
+    with pytest.raises(SegmentationError, match="foto a color"):
+        probe.segment(ImageData(np.zeros((64, 64), np.uint8), "gray"))
+
+    assert probe.load_calls == 0
+
+
+def test_template_wraps_runtime_failures_in_segmentation_error():
+    def failing(rgb):
+        raise RuntimeError("CUDA out of memory")
+
+    with pytest.raises(SegmentationError, match="tarjeta gráfica"):
+        _ProbeSegmenter(failing).segment(ImageData(np.zeros((64, 64, 3), np.uint8), "tiny"))
+
+
+def test_template_rejects_an_output_of_the_wrong_resolution():
+    probe = _ProbeSegmenter(lambda rgb: np.zeros((8, 8), np.int32))
+
+    with pytest.raises(SegmentationError, match="reinicie la aplicación"):
+        probe.segment(ImageData(np.zeros((64, 64, 3), np.uint8), "tiny"))

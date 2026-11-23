@@ -11,6 +11,7 @@ import torch.nn.functional as F
 
 from services.inference.base_estimator import BaseDepthEstimator
 from services.inference.model_loader import DepthModelBundle
+from services.segmentation.base_segmenter import BaseSegmenter
 from services.segmentation.model_loader import SegmentationModelBundle
 
 
@@ -191,3 +192,45 @@ class FakeSegmentationModelLoader:
     def load(self, model_id: str, device: torch.device) -> SegmentationModelBundle:
         self.load_calls.append((model_id, device))
         return SegmentationModelBundle(processor=FakeSegformerProcessor(), model=self.model.to(device))
+
+
+class SceneSegmenter(BaseSegmenter):
+    """A segmenter that is not SegFormer: "box" on the red boxes of the synthetic scene, "wall" elsewhere.
+
+    It implements only the :class:`BaseSegmenter` contract, so it shows that
+    another segmentation model can replace SegFormer without changing the
+    modules that use it. ``segment_calls`` counts the images it labelled.
+    """
+
+    def __init__(self) -> None:
+        self._loaded = False
+        self.load_calls = 0
+        self.segment_calls = 0
+
+    @property
+    def name(self) -> str:
+        return "scene-segmenter"
+
+    @property
+    def is_loaded(self) -> bool:
+        return self._loaded
+
+    @property
+    def device_name(self) -> str:
+        return "CPU" if self._loaded else ""
+
+    def load(self) -> None:
+        self.load_calls += 1
+        self._loaded = True
+
+    def unload(self) -> None:
+        self._loaded = False
+
+    def _predict(self, rgb: np.ndarray) -> np.ndarray:
+        self.segment_calls += 1
+        class_ids = np.full(rgb.shape[:2], WALL_ID, dtype=np.int32)
+        class_ids[box_mask(rgb)] = BOX_ID
+        return class_ids
+
+    def _class_names(self) -> dict[int, str]:
+        return dict(FAKE_ID2LABEL)

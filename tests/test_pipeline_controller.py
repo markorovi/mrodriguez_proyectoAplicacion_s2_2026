@@ -183,3 +183,56 @@ def test_close_releases_every_model(estimator, before, moved):
         controller.analyze(before, moved)
         assert estimator.is_loaded and segmenter.is_loaded
     assert not estimator.is_loaded and not segmenter.is_loaded
+
+
+# --- Replaceable segmentation model (RA-003) ------------------------------------------------------
+
+import ast  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+import controllers.pipeline_controller as pipeline_module  # noqa: E402
+from tests.doubles import SceneSegmenter  # noqa: E402
+
+
+def test_another_segmenter_can_replace_segformer(estimator, before, moved):
+    segmenter = SceneSegmenter()
+    assert not isinstance(segmenter, SegFormerSegmenter)
+
+    report = _controller(estimator, segmenter=segmenter).analyze(before, moved)
+
+    assert [obj.change_type for obj in report.objects] == [ChangeType.DISPLACED]
+    # "before", the aligned "after" and the original "after" for the indoor check.
+    assert segmenter.segment_calls == 3
+    assert segmenter.load_calls == 1
+
+
+def test_default_segmenter_comes_from_the_factory(monkeypatch, estimator, before, moved):
+    requested = []
+    replacement = SceneSegmenter()
+
+    def fake_create_segmenter(settings):
+        requested.append(settings)
+        return replacement
+
+    monkeypatch.setattr(pipeline_module, "create_segmenter", fake_create_segmenter)
+    settings = AppSettings()
+
+    controller = PipelineController(settings, depth_estimator=estimator)
+    controller.analyze(before, moved)
+
+    assert requested == [settings.segmentation]
+    assert replacement.segment_calls == 3
+
+
+def test_controller_does_not_name_the_concrete_segmenter():
+    source = Path(pipeline_module.__file__).read_text(encoding="utf-8")
+    assert "SegFormerSegmenter" not in source
+
+    imported = set()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            imported.add(node.module)
+        elif isinstance(node, ast.Import):
+            imported.update(alias.name for alias in node.names)
+    assert "services.segmentation.segformer_segmenter" not in imported
+    assert "services.segmentation.base_segmenter" in imported
