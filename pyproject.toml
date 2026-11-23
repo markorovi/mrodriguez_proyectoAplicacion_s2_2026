@@ -1,6 +1,6 @@
 [project]
 name = "monocular-scene-diff"
-version = "0.1.0"
+version = "0.3.0"
 description = "Scene change detection between two monocular RGB images using metric depth estimation."
 requires-python = ">=3.10"
 
@@ -9,5 +9,5 @@ pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "-ra"
 markers = [
-    "integration: runs real pretrained models (downloads weights; enable with RUN_INTEGRATION=1)",
+    "integration: runs real pretrained models (uses the saved weights and downloads them only if missing and the settings allow it; enable with RUN_INTEGRATION=1)",
 ]

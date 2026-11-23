@@ -101,7 +101,7 @@ Interfaz de usuario final (ACT-09) y verificación de escena interior (RF-012) c
 | Manual de usuario integrado (RIS-001 y RIS-003): pautas para tomar las fotos, requisitos de las imágenes, lectura del resultado y avisos frecuentes | Completado |
 | Ejemplos precargados (RIS-002): escenas de prueba y fotos reales sin metadatos, en Archivo > Cargar ejemplo | Completado |
 | Mensajes e interfaz sin términos técnicos (RNF-001): avisos, textos de la ventana y nombre de la cámara ("Cámara N") | Completado; lo verifican `tests/test_user_messages.py` y `tests/test_ui_texts.py` |
-| Pruebas | Sin integración: 394 pasan y 25 se omiten. Con `RUN_INTEGRATION=1`: 418 pasan y 1 se omite (AKAZE, requiere `opencv-contrib-python`) |
+| Pruebas | Sin integración: 431 pasan y 26 se omiten. Con `RUN_INTEGRATION=1`: 456 pasan y 1 se omite (AKAZE, requiere `opencv-contrib-python`) |
 
 ### Rendimiento medido
 
