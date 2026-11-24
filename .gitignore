@@ -19,7 +19,11 @@ models/weights/
 # Internal progress tracking
 PROGRESS_LOG.txt
 
-# Personal photos and their annotated results (never versioned; see data/samples/README.md).
+# Personal photos (see data/samples/README.md). The annotated results of the real pairs and the
+# source outdoor photos are never versioned. The 3 real validation pairs (real_before*/real_after*,
+# .jpg) ARE versioned through the negation below.
+# Warning: any new .jpg photo matching real_before*/real_after* becomes visible to git; for a new
+# personal pair use another prefix or add it to .git/info/exclude.
 # Specific prefixes only: real_pairs.json and no_interior_01.png stay versioned.
 data/samples/real_before*
 data/samples/real_after*

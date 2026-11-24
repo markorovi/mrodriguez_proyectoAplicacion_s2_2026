@@ -47,7 +47,7 @@ servicios, de modo que cada modelo puede sustituirse sin modificar los demás m�
 | `ui/` | Interfaz gráfica de escritorio (PySide6): ventana principal (`MainWindow`), hilo de análisis (`PipelineWorker`), pantalla de resultado (`ReportWidget`) con exportación, historial de la sesión (`HistoryDialog`), manual de usuario (`ManualDialog`), y paneles y diálogo de selección de imágenes. Solo usa el `PipelineController` y los modelos de dominio. |
 | `scripts/` | Utilidades de línea de comandos: medición de latencia de la profundidad y del análisis completo (CPU y GPU), evidencia de los requisitos de rendimiento y portabilidad (`measure_requirements`) y calibración de la cámara. |
 | `tests/` | Pruebas unitarias y de integración con `pytest`. |
-| `data/samples/` | Escenas interiores sintéticas para demostración y pruebas sin conexión, tres pares de fotos reales sin metadatos (`ejemplo_01_a.jpg` a `ejemplo_03_b.jpg`) para los ejemplos precargados y una foto de exterior (`no_interior_01.png`) para probar el rechazo de exteriores. Las fotos personales originales no se versionan (ver [data/samples/README.md](data/samples/README.md)). |
+| `data/samples/` | Escenas interiores sintéticas para demostración y pruebas sin conexión, tres pares de fotos reales sin metadatos (`ejemplo_01_a.jpg` a `ejemplo_03_b.jpg`) para los ejemplos precargados y una foto de exterior (`no_interior_01.png`) para probar el rechazo de exteriores. Los pares reales de validacion y la serie pos1 a pos7 se versionan para las pruebas; sus resultados anotados y las fotos de exterior de origen no (ver [data/samples/README.md](data/samples/README.md)). |
 
 Patrones aplicados:
 

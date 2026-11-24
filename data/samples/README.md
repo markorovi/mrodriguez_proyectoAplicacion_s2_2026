@@ -11,6 +11,9 @@ Escenas interiores sintéticas de 640x480 generadas con `utils/synthetic_scene.p
 | `scene_low_light.png` | `scene_before.png` con un 12 % de brillo; dispara la advertencia de baja iluminación. |
 | `depth_output_sample.png` | Mapa de profundidad coloreado (cerca = claro) de `scene_before.png`, calculado en GPU por las pruebas de integración de hardware. Siempre sale de la escena sintética, nunca de una foto personal. |
 | `comparison_output_sample.png` | Resultado del análisis completo de `scene_before.png` contra `scene_after_moved.png`, con la posición anterior, la actual y la distancia recorrida; lo generan las pruebas de integración del pipeline. |
+| `ejemplo_01_a.jpg` a `ejemplo_03_b.jpg` | Tres pares de fotos reales de un espacio interior (1920x1080), tomadas por el autor del proyecto. Son copias de sus fotos con los metadatos eliminados (sin EXIF ni ubicación GPS); `_a` es la foto "antes" y `_b` la "después". |
+| `examples.json` | Manifiesto de los ejemplos que ofrece la aplicación en **Archivo > Cargar ejemplo**: las tres escenas sintéticas y los tres pares `ejemplo_*`. |
+| `no_interior_01.png` | Foto de exterior (936x622), tomada por el autor y versionada sin metadatos. Es solo el caso negativo de la comprobación de escena interior: `tests/test_indoor_real_integration.py` verifica con el modelo real que se rechaza, tanto como foto "antes" como "después". No se ofrece como ejemplo en la aplicación. |
 
 Las pruebas no modifican estos archivos: guardan sus imágenes en el directorio temporal de pytest
 (ver `tests/sample_outputs.py`). Para regenerar las dos muestras versionadas, ejecute la
@@ -20,9 +23,6 @@ integración con `UPDATE_SAMPLES=1`, por ejemplo:
 $env:RUN_INTEGRATION=1; $env:UPDATE_SAMPLES=1
 pytest tests/test_hardware_integration.py -k depth_output_sample
 ```
-| `ejemplo_01_a.jpg` a `ejemplo_03_b.jpg` | Tres pares de fotos reales de un espacio interior (1920x1080), tomadas por el autor del proyecto. Son copias de sus fotos con los metadatos eliminados (sin EXIF ni ubicación GPS); `_a` es la foto "antes" y `_b` la "después". |
-| `examples.json` | Manifiesto de los ejemplos que ofrece la aplicación en **Archivo > Cargar ejemplo**: las tres escenas sintéticas y los tres pares `ejemplo_*`. |
-| `no_interior_01.png` | Foto de exterior (936x622), tomada por el autor y versionada sin metadatos. Es solo el caso negativo de la comprobación de escena interior: `tests/test_indoor_real_integration.py` verifica con el modelo real que se rechaza, tanto como foto "antes" como "después". No se ofrece como ejemplo en la aplicación. |
 
 Los nombres `ejemplo_*` no empiezan por `real_` a propósito: las pruebas de integración tratan los
 pares `real_before*` / `real_after*` como fotos de validación, y los ejemplos no deben alterarlas.
