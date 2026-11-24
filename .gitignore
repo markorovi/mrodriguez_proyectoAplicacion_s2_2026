@@ -25,6 +25,9 @@ data/samples/real_before*
 data/samples/real_after*
 data/samples/real_comparison_output*
 data/samples/exterior*
+# Exception: the real test pairs are versioned (without GPS data) so the integration tests run anywhere.
+!data/samples/real_before*.jpg
+!data/samples/real_after*.jpg
 
 # IDE and OS artifacts
 .vscode/

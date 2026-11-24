@@ -27,11 +27,13 @@ pytest tests/test_hardware_integration.py -k depth_output_sample
 Los nombres `ejemplo_*` no empiezan por `real_` a propósito: las pruebas de integración tratan los
 pares `real_before*` / `real_after*` como fotos de validación, y los ejemplos no deben alterarlas.
 
-Las fotos personales originales (los pares `real_before*` / `real_after*`, sus resultados
-`real_comparison_output*.png` y las fotos de exterior de origen) no se versionan: `.gitignore` las
-excluye y solo se suben las copias sin metadatos listadas arriba.
+Los tres pares de validación `real_before*.jpg` / `real_after*.jpg` y la serie `pos1.jpg` a
+`pos7.jpg` (desplazamiento conocido, `scripts/measure_known_displacement.py`) están versionados
+para que las pruebas funcionen en cualquier equipo. Conservan su EXIF original, que no contiene
+ubicación GPS. Los resultados `real_comparison_output*.png` y las fotos de exterior de origen no
+se versionan: `.gitignore` los excluye.
 
-Para probar con fotos reales, copie aquí cada par como `real_before<sufijo>.<ext>` y
+Para probar con otras fotos reales, copie aquí cada par como `real_before<sufijo>.<ext>` y
 `real_after<sufijo>.<ext>` (por ejemplo `real_before_2.jpg` y `real_after_2.jpg`). Las pruebas de
 integración analizan todos los pares y guardan cada resultado anotado como
 `real_comparison_output<sufijo>.png` en el directorio temporal de pytest, nunca en esta carpeta

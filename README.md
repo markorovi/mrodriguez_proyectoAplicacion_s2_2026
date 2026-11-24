@@ -344,12 +344,13 @@ regeneran las dos muestras versionadas, `data/samples/comparison_output_sample.p
 `data/samples/depth_output_sample.png`. Las pruebas que no encuentran su hardware o sus datos se
 omiten:
 
-- **Fotos reales**: copie cada par de fotos del mismo espacio como
-  `data/samples/real_before<sufijo>.jpg` y `data/samples/real_after<sufijo>.jpg` (cualquier
-  formato admitido), por ejemplo `real_before.jpg`/`real_after.jpg` y
-  `real_before_2.jpg`/`real_after_2.jpg`. Cada par se prueba por separado y su resultado
-  anotado se guarda como `real_comparison_output<sufijo>.png` en el directorio temporal de pytest
-  (nunca en el repositorio; `.gitignore` excluye las fotos personales). El resultado esperado de cada par
+- **Fotos reales**: los tres pares de validación (`real_before.jpg`/`real_after.jpg`,
+  `real_before_2.jpg`/`real_after_2.jpg` y `real_before_3.jpg`/`real_after_3.jpg`) están
+  versionados en `data/samples/`, sin datos de ubicación GPS. Para agregar otro par del mismo
+  espacio, cópielo como `data/samples/real_before<sufijo>.jpg` y
+  `data/samples/real_after<sufijo>.jpg` (cualquier formato admitido). Cada par se prueba por
+  separado y su resultado anotado se guarda como `real_comparison_output<sufijo>.png` en el
+  directorio temporal de pytest (nunca en el repositorio; `.gitignore` excluye esos resultados). El resultado esperado de cada par
   puede declararse en `data/samples/real_pairs.json` (ver [tests/real_pairs.py](tests/real_pairs.py)).
 - **Webcam**: se prueban los índices 0-3; para fijar uno, defina `CAMERA_INDEX`
   (`$env:CAMERA_INDEX=1` en PowerShell).
